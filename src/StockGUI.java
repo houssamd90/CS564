@@ -361,7 +361,7 @@ public class StockGUI {
 				try {
 					st = con.prepareStatement(sql);
 					
-					st.setString(1, userID);
+					st.setInt(1, Integer.parseInt(userID) );
 					st.setString(2, name);
 					st.setString(3, dob);
 					st.setBigDecimal(4, BigDecimal.valueOf(Double.parseDouble(cash)));
