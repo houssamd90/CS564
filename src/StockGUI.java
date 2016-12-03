@@ -23,19 +23,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.DateFormat;
-import java.util.List;
-import java.util.ArrayList;
-import java.text.SimpleDateFormat; // can remove this after testing?
+import java.text.SimpleDateFormat;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
-import org.knowm.xchart.XYChart;
-import org.knowm.xchart.XYChartBuilder;
-import org.knowm.xchart.XYSeries;
-import org.knowm.xchart.style.markers.SeriesMarkers;
-import org.knowm.xchart.QuickChart;	
-import org.knowm.xchart.SwingWrapper;
+import java.text.ParseException;
 
 public class StockGUI {
 
@@ -317,56 +309,6 @@ public class StockGUI {
 		//Put graphing stuff here. Can get user id from txtUserID and ticker from txtTicker2
 		btnGraph.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				@SuppressWarnings("deprecation")
-				String sql="net_worth_trending(" + txtUserID + ")";
-				try {
-					
-					//ResultSet rs = st.executeQuery(sql);
-					List<java.util.Date> xData = new ArrayList<java.util.Date>();
-					List<Double> yData = new ArrayList<Double>();
-					/*
-					while (rs.next()) {
-						xData.add(rs.getDate("curDate"));
-						yData.add(rs.getFloat("curNetWorth"));						
-					}
-					*/
-
-					DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-					xData.add(sdf.parse("2016-01-01"));
-					xData.add(sdf.parse("2016-02-02"));
-					xData.add(sdf.parse("2016-03-15"));
-					yData.add(1000.0);
-					yData.add(1500.1);
-					yData.add(900.5);
-										
-					//double[] xData = new double[] { 0.0, 1.0, 2.0 };
-				    //double[] yData = new double[] { 2.0, 1.0, 0.0 };
-
-				    // Create Chart
-				    //XYChart chart = QuickChart.getChart("Net worth trend", "Date", "Net worth ($)", "whatevs", xData, yData);
-
-					XYChart chart = new XYChartBuilder().width(800).height(600).title("Net worth trend").build();
-					chart.getStyler().setLegendVisible(false);
-					XYSeries series = chart.addSeries("blah", xData, yData);
-					series.setMarker(SeriesMarkers.NONE);
-					
-				    // Show it
-				    new SwingWrapper(chart).displayChart();
-
-				} catch (Exception er) {
-					er.printStackTrace();
-					return;
-				} finally {
-					if (st != null) {
-						try { 
-							st.close();
-						}
-						catch (SQLException er) {
-							return;
-						}
-					}
-				}
-				
 			}
 		});
 		btnGraph.setBounds(283, 246, 95, 39);
@@ -412,10 +354,20 @@ public class StockGUI {
 		JButton btnCreate = new JButton("Create");
 		btnCreate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String userID = txtUserIDnew.getText();
+				int userID = Integer.parseInt(txtUserIDnew.getText());
 				String name = txtName.getText();
-				String dob = txtDOB.getText();
-				String cash = txtCashOnHandNew.getText();
+				//get date
+				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+				java.util.Date parsed = null;
+				try {
+					parsed = format.parse(txtDOB.getText());
+				} catch (ParseException e2) {
+					// TODO Auto-generated catch block
+					e2.printStackTrace();
+				}
+				java.sql.Date dob = new java.sql.Date(parsed.getTime());
+				//
+				BigDecimal cash = BigDecimal.valueOf(Double.parseDouble(txtCashOnHandNew.getText()));
 				
 				@SuppressWarnings("deprecation")
 				String sql="select add_new_user(?,?,?,?)"; //userID, name, dob, cash
@@ -423,12 +375,12 @@ public class StockGUI {
 				try {
 					st = con.prepareStatement(sql);
 					
-					st.setInt(1, Integer.parseInt(userID) );
+					st.setInt(1, userID );
 					st.setString(2, name);
-					st.setString(3, dob);
-					st.setBigDecimal(4, BigDecimal.valueOf(Double.parseDouble(cash)));
+					st.setDate(3, dob);
+					st.setBigDecimal(4, cash);
 					
-					st.executeUpdate();
+					st.execute();
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
