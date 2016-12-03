@@ -365,7 +365,7 @@ public class StockGUI {
 					st.setString(3, dob);
 					st.setInt(4, Integer.parseInt(cash));
 					
-					st.execute(sql);
+					st.executeUpdate();
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
