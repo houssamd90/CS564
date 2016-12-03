@@ -15,6 +15,7 @@ import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 
 import java.awt.Font;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -363,7 +364,7 @@ public class StockGUI {
 					st.setString(1, userID);
 					st.setString(2, name);
 					st.setString(3, dob);
-					st.setDouble(4, Double.parseDouble(cash));
+					st.setBigDecimal(4, BigDecimal.valueOf(Double.parseDouble(cash)));
 					
 					st.executeUpdate();
 				} catch (SQLException er) {
