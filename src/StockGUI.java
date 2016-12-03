@@ -12,9 +12,11 @@ import javax.swing.JLabel;
 import javax.swing.JButton;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
+
 import java.awt.Font;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.awt.event.ActionListener;
@@ -132,7 +134,7 @@ public class StockGUI {
 				@SuppressWarnings("deprecation")
 				String sql="PUT SQL STATEMENT HERE";
 				try {
-					st.execute(sql);
+					ResultSet resultSet = st.executeQuery(sql);
 				} catch (SQLException e) {
 					e.printStackTrace();
 					return;
