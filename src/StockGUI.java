@@ -41,6 +41,10 @@ public class StockGUI {
 	//Postgres variables
 	private String sql = null;
 	private Statement st = null;
+	private JTextField txtUserIDnew;
+	private JTextField txtName;
+	private JTextField txtDOB;
+	private JTextField txtCashOnHandNew;
 	
 	/**
 	 * Launch the application.
@@ -73,7 +77,7 @@ public class StockGUI {
 		//Postgres stuff
 		try{
 			Class.forName("org.postgresql.Driver");
-			Connection con=DriverManager.getConnection("jdbc:postgresql://localhost:5432/Expenses","postgres","PASSWORD HERE");
+			Connection con=DriverManager.getConnection("jdbc:postgresql://localhost:5432/classdb","auri","testdb");
 			if(con!=null){
 				System.out.println("Connected");
 			}
@@ -86,24 +90,21 @@ public class StockGUI {
 		
 		frmStockMartket = new JFrame();
 		frmStockMartket.setTitle("Stock Market");
-		frmStockMartket.setBounds(100, 100, 656, 352);
+		frmStockMartket.setBounds(100, 100, 897, 356);
 		frmStockMartket.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmStockMartket.getContentPane().setLayout(null);
 		
 		txtTicker = new JTextField();
-		txtTicker.setText("YHOO");
 		txtTicker.setBounds(67, 79, 86, 20);
 		frmStockMartket.getContentPane().add(txtTicker);
 		txtTicker.setColumns(10);
 		
 		txtQuantity = new JTextField();
-		txtQuantity.setText("56");
 		txtQuantity.setBounds(67, 120, 86, 20);
 		frmStockMartket.getContentPane().add(txtQuantity);
 		txtQuantity.setColumns(10);
 		
 		txtDate = new JTextField();
-		txtDate.setText("11/21/2016");
 		txtDate.setBounds(67, 161, 86, 20);
 		frmStockMartket.getContentPane().add(txtDate);
 		txtDate.setColumns(10);
@@ -156,19 +157,16 @@ public class StockGUI {
 		frmStockMartket.getContentPane().add(separator);
 		
 		txtUserID = new JTextField();
-		txtUserID.setText("John544");
 		txtUserID.setBounds(270, 79, 86, 20);
 		frmStockMartket.getContentPane().add(txtUserID);
 		txtUserID.setColumns(10);
 		
 		txtTicker2 = new JTextField();
-		txtTicker2.setText("YHOO");
 		txtTicker2.setBounds(270, 120, 86, 20);
 		frmStockMartket.getContentPane().add(txtTicker2);
 		txtTicker2.setColumns(10);
 		
 		txtQuantity2 = new JTextField();
-		txtQuantity2.setText("25");
 		txtQuantity2.setEditable(false);
 		txtQuantity2.setEnabled(false);
 		txtQuantity2.setBounds(270, 161, 86, 20);
@@ -176,7 +174,6 @@ public class StockGUI {
 		txtQuantity2.setColumns(10);
 		
 		txtValue = new JTextField();
-		txtValue.setText("502.5");
 		txtValue.setEnabled(false);
 		txtValue.setEditable(false);
 		txtValue.setBounds(270, 205, 86, 20);
@@ -205,19 +202,16 @@ public class StockGUI {
 		frmStockMartket.getContentPane().add(separator_1);
 		
 		txtUser3 = new JTextField();
-		txtUser3.setText("John544");
 		txtUser3.setBounds(510, 79, 86, 20);
 		frmStockMartket.getContentPane().add(txtUser3);
 		txtUser3.setColumns(10);
 		
 		txtDate3 = new JTextField();
-		txtDate3.setText("10/15/2015");
 		txtDate3.setBounds(510, 120, 86, 20);
 		frmStockMartket.getContentPane().add(txtDate3);
 		txtDate3.setColumns(10);
 		
 		txtStockValue = new JTextField();
-		txtStockValue.setText("3522");
 		txtStockValue.setEnabled(false);
 		txtStockValue.setEditable(false);
 		txtStockValue.setBounds(510, 161, 86, 20);
@@ -225,7 +219,6 @@ public class StockGUI {
 		txtStockValue.setColumns(10);
 		
 		txtCashOnHand = new JTextField();
-		txtCashOnHand.setText("560");
 		txtCashOnHand.setEnabled(false);
 		txtCashOnHand.setEditable(false);
 		txtCashOnHand.setBounds(510, 205, 86, 20);
@@ -314,6 +307,80 @@ public class StockGUI {
 		});
 		btnGraph.setBounds(283, 246, 95, 39);
 		frmStockMartket.getContentPane().add(btnGraph);
+		
+		JSeparator separator_2 = new JSeparator();
+		separator_2.setOrientation(SwingConstants.VERTICAL);
+		separator_2.setBounds(634, 11, 2, 280);
+		frmStockMartket.getContentPane().add(separator_2);
+		
+		JLabel label = new JLabel("User ID");
+		label.setBounds(646, 82, 46, 14);
+		frmStockMartket.getContentPane().add(label);
+		
+		JLabel lblName = new JLabel("Name");
+		lblName.setBounds(646, 123, 46, 14);
+		frmStockMartket.getContentPane().add(lblName);
+		
+		JLabel lblDateOfBirth = new JLabel("Date of Birth");
+		lblDateOfBirth.setBounds(646, 164, 72, 14);
+		frmStockMartket.getContentPane().add(lblDateOfBirth);
+		
+		txtUserIDnew = new JTextField();
+		txtUserIDnew.setColumns(10);
+		txtUserIDnew.setBounds(756, 79, 86, 20);
+		frmStockMartket.getContentPane().add(txtUserIDnew);
+		
+		txtName = new JTextField();
+		txtName.setColumns(10);
+		txtName.setBounds(756, 120, 86, 20);
+		frmStockMartket.getContentPane().add(txtName);
+		
+		txtDOB = new JTextField();
+		txtDOB.setColumns(10);
+		txtDOB.setBounds(756, 161, 86, 20);
+		frmStockMartket.getContentPane().add(txtDOB);
+		
+		JLabel lblNewUser = new JLabel("New User");
+		lblNewUser.setFont(new Font("Tahoma", Font.BOLD, 16));
+		lblNewUser.setBounds(720, 26, 95, 20);
+		frmStockMartket.getContentPane().add(lblNewUser);
+		
+		JButton btnCreate = new JButton("Create");
+		btnCreate.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String userID = txtUserIDnew.getText();
+				String name = txtName.getText();
+				String dob = txtDOB.getText();
+				String cash = txtCashOnHandNew.getText();
+				
+				@SuppressWarnings("deprecation")
+				String sql="select add_new_user(" + userID + name + dob + cash + cash + ")";
+				try {
+					ResultSet resultSet = st.executeQuery(sql);
+				} catch (SQLException er) {
+					er.printStackTrace();
+					return;
+				} finally{
+					if (st != null) { try {
+						st.close();
+					} catch (SQLException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} }
+				}
+			}
+		});
+		btnCreate.setBounds(731, 249, 95, 33);
+		frmStockMartket.getContentPane().add(btnCreate);
+		
+		JLabel label_1 = new JLabel("Cash on Hand ($)");
+		label_1.setBounds(646, 208, 100, 14);
+		frmStockMartket.getContentPane().add(label_1);
+		
+		txtCashOnHandNew = new JTextField();
+		txtCashOnHandNew.setColumns(10);
+		txtCashOnHandNew.setBounds(756, 205, 86, 20);
+		frmStockMartket.getContentPane().add(txtCashOnHandNew);
 	}
 	
 	//we will call in to the stored procedure to check if a transaction exists for the given date/ticker
