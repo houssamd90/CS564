@@ -223,8 +223,24 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
+-------------------------------------------------------------------------------
+-- NAME: oldest_observation
+-- DESCRIPTION: Given a ticker, tells us the earliest that we have stock data
+--              for that ticker. Tells us the earliest date we can buy stocks
+-- PARAMETERS:
+--  curTicker text - Ticker to find the oldest date for
+-------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION oldest_observation(curTicker text) RETURNS date AS $$
 BEGIN
 	SELECT min(date) from Market_Observations WHERE ticker=curTicker;
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION is_transaction(id integer, curDate date, curTicker text) RETURNS boolean AS $$
+DECLARE exists boolean := FALSE;
+BEGIN	
+	SELECT ticker INTO exists FROM Strategies where userid=id and date=curDate and ticker=curTicker LIMIT 1;
+	RETURN exists;
 END
 $$ LANGUAGE plpgsql;
