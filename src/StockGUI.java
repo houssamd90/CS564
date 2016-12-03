@@ -1,6 +1,7 @@
 import java.awt.EventQueue;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.JList;
 import javax.swing.DropMode;
@@ -131,6 +132,10 @@ public class StockGUI {
 		JButton btnBuySell = new JButton("Submit");
 		btnBuySell.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				if (transactionExists()){
+					JOptionPane.showMessageDialog(null, "Write error"); 
+					return;
+				}
 				@SuppressWarnings("deprecation")
 				String sql="PUT SQL STATEMENT HERE";
 				try {
@@ -261,18 +266,26 @@ public class StockGUI {
 		JButton btnUpdate2 = new JButton("Update");
 		btnUpdate2.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				
 				@SuppressWarnings("deprecation")
 				String sql="PUT SQL STATEMENT HERE";
 				try {
-					st.execute(sql);
+					ResultSet resultSet = st.executeQuery(sql);
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
+				} finally{
+					if (st != null) { try {
+						st.close();
+					} catch (SQLException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} }
 				}
 				System.out.println("SQL Command sent successfully");
 			}
 		});
-		btnUpdate2.setBounds(245, 246, 95, 39);
+		btnUpdate2.setBounds(190, 246, 95, 39);
 		frmStockMartket.getContentPane().add(btnUpdate2);
 		
 		JButton btnUpdate3 = new JButton("Update");
@@ -291,5 +304,22 @@ public class StockGUI {
 		});
 		btnUpdate3.setBounds(454, 246, 95, 39);
 		frmStockMartket.getContentPane().add(btnUpdate3);
+		
+		JButton btnGraph = new JButton("Trending");
+		
+		//Put graphing stuff here. Can get user id from txtUserID and ticker from txtTicker2
+		btnGraph.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+			}
+		});
+		btnGraph.setBounds(283, 246, 95, 39);
+		frmStockMartket.getContentPane().add(btnGraph);
+	}
+	
+	//we will call in to the stored procedure to check if a transaction exists for the given date/ticker
+	//inputed by user. If it does, we will then execute a remove_transaction followed by an add_transaction
+	//command to replace the old transaction with the new
+	private boolean transactionExists(){
+		return true;
 	}
 }
