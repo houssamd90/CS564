@@ -17,6 +17,7 @@ import javax.swing.SwingConstants;
 import java.awt.Font;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -40,11 +41,12 @@ public class StockGUI {
 
 	//Postgres variables
 	private String sql = null;
-	private Statement st = null;
+	private PreparedStatement st = null;
 	private JTextField txtUserIDnew;
 	private JTextField txtName;
 	private JTextField txtDOB;
 	private JTextField txtCashOnHandNew;
+	Connection con;
 	
 	/**
 	 * Launch the application.
@@ -81,7 +83,6 @@ public class StockGUI {
 			if(con!=null){
 				System.out.println("Connected");
 			}
-			st = con.createStatement();
 		}
 		catch(Exception e){
 			e.printStackTrace();
@@ -354,9 +355,17 @@ public class StockGUI {
 				String cash = txtCashOnHandNew.getText();
 				
 				@SuppressWarnings("deprecation")
-				String sql="select add_new_user(" + userID + name + dob + cash + cash + ")";
+				String sql="select add_new_user(?,?,?,?)"; //userID, name, dob, cash
+			
 				try {
-					ResultSet resultSet = st.executeQuery(sql);
+					st = con.prepareStatement(sql);
+					
+					st.setString(1, userID);
+					st.setString(2, name);
+					st.setString(3, dob);
+					st.setInt(4, Integer.parseInt(cash));
+					
+					st.execute(sql);
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
