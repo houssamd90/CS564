@@ -363,7 +363,7 @@ public class StockGUI {
 					st.setString(1, userID);
 					st.setString(2, name);
 					st.setString(3, dob);
-					st.setInt(4, Integer.parseInt(cash));
+					st.setDouble(4, Double.parseDouble(cash));
 					
 					st.executeUpdate();
 				} catch (SQLException er) {
