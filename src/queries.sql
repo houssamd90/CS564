@@ -9,7 +9,7 @@
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION add_transaction(id integer, curDate date, curTicker text, curAmount numeric(12,3)) RETURNS void AS $$
 BEGIN
-	INSERT INTO Strategies(userID,date,ticker,amount) values(id,curDate,curTicker,curAmount);
+	INSERT INTO Strategies(userID,date,ticker,count) values(id,curDate,curTicker,curAmount);
 END
 $$ LANGUAGE plpgsql;
 
@@ -22,13 +22,15 @@ $$ LANGUAGE plpgsql;
 --  curTicker text    - The ticker to determine the holdings for
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION current_holdings(curUser integer, curDate date, curTicker text) RETURNS numeric(12,2) AS $$
-BEGIN
-	SELECT Market_Observations.ticker,sum(amount) 
+DECLARE holdings numeric(12,2);
+BEGIN 
+	SELECT sum(count) INTO holdings
 		FROM Investors,Strategies
 		WHERE Investors.userid = Strategies.userid AND
 			Investors.userid = curUser AND
 			Strategies.ticker = curTicker AND
 			Strategies.date <= curDate;
+	RETURN holdings;
 END
 $$ LANGUAGE plpgsql;
 
@@ -43,12 +45,13 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION current_tickers(curUser integer, curDate date) RETURNS TABLE (ticker text, amount numeric(12,3)) as
 $$
 BEGIN
-	SELECT ticker,sum(count) 
-		FROM Strategies 
-		WHERE userid = curUser AND 
-			Strategies.date <= curDate 
-		GROUP BY userid,ticker
-		HAVING sum(count)>0; 
+	RETURN QUERY 
+		SELECT Strategies.ticker,sum(count) 
+			FROM Strategies 
+			WHERE userid = curUser AND 
+				Strategies.date <= curDate 
+			GROUP BY userid,Strategies.ticker
+			HAVING sum(count)>0; 
 END
 $$ LANGUAGE plpgsql;
 
@@ -74,20 +77,23 @@ END
 $$ LANGUAGE plpgsql;
 
 -------------------------------------------------------------------------------
--- NAME:        net_worth
+-- NAME:        stock_worth
 -- DESCRIPTION: Calculates the total value of stock holdings for the user.
 -- PARAMETERS:
 --  userID  integer - ID for the user to calculate net worth for.
 --  curDate date    - Effective date to examine net worth
 -------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION net_worth(userID integer, curDate date) RETURNS numeric(12,2) AS $$
+CREATE OR REPLACE FUNCTION stock_worth(userID integer, curDate date) RETURNS numeric(12,2) AS $$
+DECLARE worth numeric(12,2);
 BEGIN
-SELECT sum(stock_values.value) 
-	FROM (SELECT P.count * M.price AS value
-		FROM current_tickers(userID,curDate) P, Market_Observatons M
-		WHERE P.ticker = M.ticker) AS stock_values;
+	SELECT sum(stock_values.value) INTO worth
+		FROM (SELECT (P.amount * M.close) AS value
+			FROM current_tickers(userID,curDate) P, Market_Observations M
+			WHERE P.ticker = M.ticker AND M.date = (SELECT max(date) from Market_Observations where date <= curDate and ticker = M.ticker)) AS stock_values;
+	RETURN worth;
 END
 $$ LANGUAGE plpgsql;
+
 
 -------------------------------------------------------------------------------
 -- NAME: net_worth_trending
@@ -97,24 +103,12 @@ $$ LANGUAGE plpgsql;
 --  id integer - User ID for trending net worth
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION net_worth_trending(id integer) RETURNS TABLE (curDate date, curNetWorth numeric(12,2)) AS $$
-DECLARE curDate date; 
-DECLARE endDate date;
-DECLARE curNetWorth numeric(12,2);
+DECLARE min_date date;
+DECLARE max_date date;
 BEGIN
-	SELECT min(date) 
-		INTO curDate 
-		FROM Strategies.date 
-		WHERE Strategies.userID = id;
-	SELECT max(date) 
-		INTO endDate 
-		FROM Strategies.date 
-		WHERE Strategies.userID = id;
-	LOOP
-		curDate := curDate + 1;
-		curNetWorth := current_holdings(id,curDate);
-		RETURN NEXT;
-		EXIT WHEN curDate>=endDate;
-	END LOOP;
+	SELECT min(date) INTO min_date FROM Strategies WHERE Strategies.userID = id;
+	SELECT max(date) INTO max_date FROM Strategies WHERE Strategies.userID = id;
+	RETURN QUERY select days.days::date, total_current_holdings(1,days.days::date) FROM generate_series(min_date,max_date,'1 day'::interval) days;
 END
 $$ LANGUAGE plpgsql;
 
@@ -156,28 +150,30 @@ $$ LANGUAGE plpgsql;
 --  id      integer - User ID to find cash holdings for
 --  curDate date    - Effective date to return the cash holdings for
 -------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION current_cash(id integer, curDate date) RETURNS numeric (12,2) AS $$
+CREATE OR REPLACE FUNCTION current_cash(id integer, curDate date) RETURNS numeric(12,2) AS $$
 DECLARE lookback_date date; 
+DECLARE curCash numeric(12,2);
 BEGIN
 	SELECT max(date) 
 		INTO lookback_date 
 		FROM cash_on_hand 
 		WHERE userID = id AND 
 			date <= curDate;
-	SELECT cash FROM cash_on_hand where date = lookback_date AND userID = id;
+	SELECT cash INTO curCash FROM cash_on_hand where date = lookback_date AND userID = id;
+	RETURN curCash;
 END
 $$ LANGUAGE plpgsql;
 
 -------------------------------------------------------------------------------
--- NAME: current_holdings
+-- NAME: total_current_holdings
 -- DESCRIPTION: Returns current holdings for a particular date
 -- PARAMETERS:
 --  id      integer - User id to return holdings for
 --  curDate date    - Effective date to return holdings for
 -------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION current_holdings(id integer, curDate date) RETURNS numeric(12) AS $$
+CREATE OR REPLACE FUNCTION total_current_holdings(id integer, curDate date) RETURNS numeric(12) AS $$
 BEGIN
-	RETURN current_cash(id,curDate) + net_worth(id,date);
+	RETURN current_cash(id,curDate) + stock_worth(id,curDate);
 END
 $$ LANGUAGE plpgsql;
 
@@ -201,9 +197,10 @@ $$ LANGUAGE plpgsql;
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION all_transactions(id integer) RETURNS TABLE (xactDate date, xactTicker text, xactCount numeric(12,3)) AS $$
 BEGIN
-	SELECT date,ticker,count 
-		FROM Strategies
-		WHERE id=userID; 	
+	RETURN QUERY 
+		SELECT date,ticker,count 
+			FROM Strategies
+			WHERE id=userID; 	
 END
 $$ LANGUAGE plpgsql;
 
@@ -231,16 +228,24 @@ $$ LANGUAGE plpgsql;
 --  curTicker text - Ticker to find the oldest date for
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION oldest_observation(curTicker text) RETURNS date AS $$
+DECLARE oldest date;
 BEGIN
-	SELECT min(date) from Market_Observations WHERE ticker=curTicker;
+	SELECT min(date) INTO oldest FROM Market_Observations WHERE ticker=curTicker;
 END
 $$ LANGUAGE plpgsql;
 
-
+-------------------------------------------------------------------------------
+-- NAME: is_transaction
+-- DESCRIPTION: Checks whether a given transaction has already been performed
+-- PARAMETERS:
+--  id        integer - User ID to look for a transaction concerning
+--  date      date    - Date that the proposed transaction was performed on
+--  curTicker text    - The ticker that the proposed transaction was operating on
+-------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION is_transaction(id integer, curDate date, curTicker text) RETURNS boolean AS $$
 DECLARE exists boolean := FALSE;
 BEGIN	
-	SELECT ticker INTO exists FROM Strategies where userid=id and date=curDate and ticker=curTicker LIMIT 1;
+	SELECT 1 INTO exists FROM Strategies where userid=id and date=curDate and ticker=curTicker LIMIT 1;
 	RETURN exists;
 END
 $$ LANGUAGE plpgsql;
