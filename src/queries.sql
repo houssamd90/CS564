@@ -8,8 +8,14 @@
 --  curAmount numeric - Amount of stock bought/sold.
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION add_transaction(id integer, curDate date, curTicker text, curAmount numeric(12,3)) RETURNS void AS $$
+DECLARE price numeric(12,2);
+DECLARE newCash numeric(12,2);
 BEGIN
 	INSERT INTO Strategies(userID,date,ticker,count) values(id,curDate,curTicker,curAmount);
+	SELECT close*curAmount INTO price FROM Market_Observations WHERE date = (SELECT max(date) from Market_Observations where date<= curDate AND ticker = curTicker) AND ticker = curTicker;
+	newCash := current_cash(id,curDate) - price;
+	PERFORM change_cash(id,curDate,newCash);
+
 END
 $$ LANGUAGE plpgsql;
 
@@ -133,13 +139,19 @@ $$ LANGUAGE plpgsql;
 -- NAME: change_cash
 -- DESCRIPTION: Create a new entry for the current cash on hand
 -- PARAMETERS:
---  id      integer - User ID for cash on hand
---  curDate date    - The date that a person's cash holdings changed.
+--  id        integer - User ID for cash on hand
+--  curDate   date    - The date that a person's cash holdings changed.
+--  curAmount numeric - Current cash holdings
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION change_cash(id integer, curDate date, curAmount numeric(12,2) ) RETURNS void AS $$
+DECLARE maxTransaction integer;
 BEGIN
-	INSERT INTO cash_on_hand(userID,date,cash) 
-		values(id,curDate,curAmount);
+	SELECT (max(transaction)+1) INTO maxTransaction FROM cash_on_hand WHERE userID = id AND date = curDate;
+	IF maxTransaction IS NULL THEN
+		maxTransaction := 1;
+	END IF;
+	INSERT INTO cash_on_hand(userID,date,transaction,cash) 
+		values(id,curDate,maxTransaction,curAmount);
 END
 $$ LANGUAGE plpgsql;
 
