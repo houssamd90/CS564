@@ -287,13 +287,49 @@ public class StockGUI {
 		btnUpdate2.setBounds(190, 246, 95, 39);
 		frmStockMartket.getContentPane().add(btnUpdate2);
 		
+		//Updates portofolio fields (Stock value and Cash on hand for a current date)
+		// txtStockValue for stock value txtCashOnHand for cash on hand
 		JButton btnUpdate3 = new JButton("Update");
 		btnUpdate3.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				@SuppressWarnings("deprecation")
-				String sql="PUT SQL STATEMENT HERE";
+				
+				int userID = Integer.parseInt(txtUser3.getText());
+				java.sql.Date curDate = getSQLdate(txtDate3.getText());
+				
+				String stockValueSql="select stock_worth(?,?)"; //userID, curDate
+				String cashOnHandSql="select current_cash(?,?)"; //userID, curDate
 				try {
-					st.execute(sql);
+					//Stock Value SQL call
+					st = con.prepareStatement(stockValueSql);
+					
+					st.setInt(1, userID );
+					st.setDate(2, curDate);
+					
+					//if SQL call successful, grab the returned result and set it
+					//to the stockValue txtbox
+					if(st.execute()){
+						ResultSet stockResult = st.getResultSet();
+						stockResult.next();
+						BigDecimal stockValue = stockResult.getBigDecimal(1);
+						txtStockValue.setText(stockValue.toString());
+					}
+					
+					//Cash on hand SQL call
+					st = con.prepareStatement(cashOnHandSql);
+					
+					st.setInt(1, userID );
+					st.setDate(2, curDate);
+					
+					//if SQL call successful, grab the returned result and set it
+					//to the cashOnHand txtbox
+					if(st.execute()){
+						ResultSet cashResult = st.getResultSet();
+						cashResult.next();
+						BigDecimal cashOnHand = cashResult.getBigDecimal(1);
+						txtCashOnHand.setText(cashOnHand.toString());
+					}
+					
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
@@ -351,22 +387,14 @@ public class StockGUI {
 		lblNewUser.setBounds(720, 26, 95, 20);
 		frmStockMartket.getContentPane().add(lblNewUser);
 		
+		//Create new user
 		JButton btnCreate = new JButton("Create");
 		btnCreate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+
 				int userID = Integer.parseInt(txtUserIDnew.getText());
 				String name = txtName.getText();
-				//get date
-				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-				java.util.Date parsed = null;
-				try {
-					parsed = format.parse(txtDOB.getText());
-				} catch (ParseException e2) {
-					// TODO Auto-generated catch block
-					e2.printStackTrace();
-				}
-				java.sql.Date dob = new java.sql.Date(parsed.getTime());
-				//
+				java.sql.Date dob = getSQLdate(txtDOB.getText());
 				BigDecimal cash = BigDecimal.valueOf(Double.parseDouble(txtCashOnHandNew.getText()));
 				
 				@SuppressWarnings("deprecation")
@@ -388,12 +416,12 @@ public class StockGUI {
 					if (st != null) { try {
 						st.close();
 					} catch (SQLException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					} }
 				}
 			}
 		});
+		
 		btnCreate.setBounds(731, 249, 95, 33);
 		frmStockMartket.getContentPane().add(btnCreate);
 		
@@ -412,5 +440,18 @@ public class StockGUI {
 	//command to replace the old transaction with the new
 	private boolean transactionExists(){
 		return true;
+	}
+	
+	//Returns a java.sql.date given a date string in the format yyyy-MM-dd
+	private java.sql.Date getSQLdate(String date){
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+		java.util.Date parsed = null;
+		try {
+			parsed = format.parse(date);
+		} catch (ParseException e2) {
+			e2.printStackTrace();
+		}
+		
+		return new java.sql.Date(parsed.getTime());
 	}
 }
