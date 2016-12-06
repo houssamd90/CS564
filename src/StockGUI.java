@@ -62,6 +62,7 @@ public class StockGUI {
 	private JTextField txtDOB;
 	private JTextField txtCashOnHandNew;
 	Connection con;
+	private JTextField txtUSERID;
 	
 	/**
 	 * Launch the application.
@@ -111,17 +112,17 @@ public class StockGUI {
 		frmStockMartket.getContentPane().setLayout(null);
 		
 		txtTicker = new JTextField();
-		txtTicker.setBounds(67, 79, 86, 20);
+		txtTicker.setBounds(67, 112, 86, 20);
 		frmStockMartket.getContentPane().add(txtTicker);
 		txtTicker.setColumns(10);
 		
-		txtQuantity = new JTextField();
-		txtQuantity.setBounds(67, 120, 86, 20);
+		txtQuantity = new JTextField(); 
+		txtQuantity.setBounds(67, 143, 86, 20);
 		frmStockMartket.getContentPane().add(txtQuantity);
 		txtQuantity.setColumns(10);
 		
 		txtDate = new JTextField();
-		txtDate.setBounds(67, 161, 86, 20);
+		txtDate.setBounds(67, 174, 86, 20);
 		frmStockMartket.getContentPane().add(txtDate);
 		txtDate.setColumns(10);
 		
@@ -131,37 +132,57 @@ public class StockGUI {
 		frmStockMartket.getContentPane().add(cmbBuySell);
 		
 		JLabel lblNewLabel = new JLabel("Ticker");
-		lblNewLabel.setBounds(10, 82, 46, 14);
+		lblNewLabel.setBounds(10, 115, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel);
 		
 		JLabel lblNewLabel_1 = new JLabel("Quantity");
-		lblNewLabel_1.setBounds(10, 123, 46, 14);
+		lblNewLabel_1.setBounds(11, 146, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_1);
 		
 		JLabel lblNewLabel_2 = new JLabel("Date");
-		lblNewLabel_2.setBounds(10, 164, 46, 14);
+		lblNewLabel_2.setBounds(10, 178, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_2);
 		
 		JLabel lblNewLabel_3 = new JLabel("Action");
 		lblNewLabel_3.setBounds(10, 208, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_3);
 		
+		//buy/sell logic. 
 		JButton btnBuySell = new JButton("Submit");
 		btnBuySell.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				if (transactionExists()){
-					JOptionPane.showMessageDialog(null, "Write error"); 
-					return;
+				
+				int userID = Integer.parseInt(txtUSERID.getText());
+				java.sql.Date date = getSQLdate(txtDate.getText());
+				String ticker = txtTicker.getText();
+				int quantity = Integer.parseInt(txtQuantity.getText());
+				
+				//If a transaction for that user/day/ticker already exists in the
+				//database, delete it so we can add the current transaction
+				if (transactionExists(userID, date, ticker)){
+					deleteTransaction();
 				}
-				@SuppressWarnings("deprecation")
-				String sql="PUT SQL STATEMENT HERE";
-				try {
-					ResultSet resultSet = st.executeQuery(sql);
-				} catch (SQLException e) {
-					e.printStackTrace();
-					return;
+				
+				if(cmbBuySell.getSelectedIndex() == 0){ //Buy
+					if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
+						JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
+						return;
+					}
+					
+					//Looks like we have enough cash on hand for the transaction so
+					//let's go ahead with it
+					addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					
+				} else{ //Sell
+					if(!enoughStocksForTransaction(userID, date, ticker, quantity)){
+						JOptionPane.showMessageDialog(null,"Not enough stocks to perform transaction");
+						return;
+					}
+					
+					//Looks like we have enough stocks for the transaction so
+					//let's go ahead with it
+					addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity*(-1)));
 				}
-				System.out.println("SQL Command sent successfully");
 			}
 		});
 		btnBuySell.setBounds(29, 246, 95, 39);
@@ -492,13 +513,174 @@ public class StockGUI {
 		txtCashOnHandNew.setColumns(10);
 		txtCashOnHandNew.setBounds(756, 205, 86, 20);
 		frmStockMartket.getContentPane().add(txtCashOnHandNew);
+		
+		JLabel lblTxtuserid = new JLabel("User ID");
+		lblTxtuserid.setBounds(10, 82, 46, 14);
+		frmStockMartket.getContentPane().add(lblTxtuserid);
+		
+		txtUSERID = new JTextField();
+		txtUSERID.setColumns(10);
+		txtUSERID.setBounds(67, 81, 86, 20);
+		frmStockMartket.getContentPane().add(txtUSERID);
 	}
 	
 	//we will call in to the stored procedure to check if a transaction exists for the given date/ticker
 	//inputed by user. If it does, we will then execute a remove_transaction followed by an add_transaction
 	//command to replace the old transaction with the new
-	private boolean transactionExists(){
-		return true;
+	private boolean transactionExists(int userID, java.sql.Date date, String ticker){
+	
+		Boolean transactionExists = false;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select is_transaction(?,?,?)"; //userID, date, curTicker
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			
+			//if SQL call successful, grab the returned result and set it
+			//to the return value
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				transactionExists = result.getBoolean(1);
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return transactionExists;
+	}
+	
+	//delete transaction for current date/ticker/user from database
+	private void deleteTransaction(){
+		int userID = Integer.parseInt(txtUSERID.getText());
+		java.sql.Date date = getSQLdate(txtDate.getText());
+		String ticker = txtTicker.getText();
+		
+		@SuppressWarnings("deprecation")
+		String sql="select remove_transaction(?,?,?)"; //userID, date, curTicker
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			
+			st.execute();
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+	}
+	
+	//add transaction for current date/ticker/user to database
+	private void addCurTransaction(int userID, java.sql.Date date, String ticker, BigDecimal quantity){
+		
+		@SuppressWarnings("deprecation")
+		String sql="select add_transaction(?,?,?,?)"; //userID, date, curTicker, quantity
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			st.setBigDecimal(4, quantity);
+			
+			st.execute();
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+	}
+	
+	private Boolean enoughCashForTransaction(int userID, java.sql.Date date, String ticker, Double quantity){
+		Double curCash = 0.00;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select current_cash(?,?)"; //userID, date
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				curCash = result.getBigDecimal(1).doubleValue();
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return curCash > (quantity * tickerValue(ticker, date) );
+		
+	}
+	
+	private Boolean enoughStocksForTransaction(int userID, java.sql.Date date, String ticker, int quantity){
+		int heldQuantity = 0;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select current_holdings(?,?,?)"; //userID, date, ticker
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				heldQuantity = result.getBigDecimal(1).intValue();
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return heldQuantity > quantity;
+		
+	}
+	
+	//this is just a stub for now, it should return the ticker value for a given date.....
+	private Double tickerValue(String ticker, java.sql.Date date){
+		return 20.00;
 	}
 	
 	//Returns a java.sql.date given a date string in the format yyyy-MM-dd
