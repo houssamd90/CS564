@@ -293,24 +293,45 @@ public class StockGUI {
 		lblPortofollio.setBounds(454, 26, 95, 20);
 		frmStockMartket.getContentPane().add(lblPortofollio);
 		
+		//gets the quantity and stock value for a current ticker/user combo as of today
+		//txtUserID, txtTicker2, txtQuantity2, txtValue
 		JButton btnUpdate2 = new JButton("Update");
 		btnUpdate2.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				
 				@SuppressWarnings("deprecation")
-				String sql="PUT SQL STATEMENT HERE";
+				
+				int userID = Integer.parseInt(txtUserID.getText());
+				String ticker = txtTicker2.getText();
+				//get current date
+				java.util.Calendar cal = java.util.Calendar.getInstance();
+				java.util.Date utilDate = cal.getTime();
+				java.sql.Date curDate = new Date(utilDate.getTime());
+				
+				String sql="select current_holdings(?,?,?)"; //userID, date, ticker
 				try {
-					ResultSet resultSet = st.executeQuery(sql);
+					//Stock Value SQL call
+					st = con.prepareStatement(sql);
+					
+					st.setInt(1, userID );
+					st.setDate(2, curDate);
+					st.setString(3, ticker);
+					
+					//if SQL call successful, grab the returned result and set it
+					//to the quantity txtbox and the calculate the Value textbox
+					if(st.execute()){
+						ResultSet result = st.getResultSet();
+						result.next();
+						//quantity
+						double quantity = result.getBigDecimal(1).doubleValue();
+						txtStockValue.setText(String.valueOf(quantity));
+						//value
+						double value = quantity * tickerValue(ticker, curDate);
+						txtValue.setText(String.valueOf(value));
+					}
+					
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
-				} finally{
-					if (st != null) { try {
-						st.close();
-					} catch (SQLException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} }
 				}
 				System.out.println("SQL Command sent successfully");
 			}
