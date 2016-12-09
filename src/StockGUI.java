@@ -332,6 +332,12 @@ public class StockGUI {
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
+				} finally{
+					if (st != null) { try {
+						st.close();
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					} }
 				}
 				System.out.println("SQL Command sent successfully");
 			}
@@ -385,7 +391,14 @@ public class StockGUI {
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
+				} finally{
+					if (st != null) { try {
+						st.close();
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					} }
 				}
+				
 				System.out.println("SQL Command sent successfully");
 			}
 		});
