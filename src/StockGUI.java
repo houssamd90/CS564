@@ -417,41 +417,47 @@ public class StockGUI {
 		btnGraph.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				@SuppressWarnings("deprecation")
-				String sql="net_worth_trending(" + txtUserID + ")";
+				final String sql="select * from net_worth_trending(?)";
 				try {
-					 // The plotting stuff expects a list of java.util.Dates, I believe. Since java.sql.Date is a subclass, I think this should work, but I don't know
-					 // enough about Java's type system to know for sure. Worst case scenario, we convert the sql.Dates to strings and then parse them, something like
-					 // 
-					 //       xData.add(sdf.parse(rs.getDate("curDate").toString()))
-					 //       
-					 // using the "sdf" date parser defined in the testing block.
-					ResultSet rs = st.executeQuery(sql);
-					List<java.util.Date> xData = new ArrayList<java.util.Date>();
-					List<Double> yData = new ArrayList<Double>();
-					while (rs.next()) {
-						xData.add(rs.getDate("curDate"));
-						yData.add(rs.getBigDecimal("curNetWorth").doubleValue());
+					st = con.prepareStatement(sql);
+					int userID = Integer.parseInt(txtUserID.getText());
+					st.setInt(1, userID);
+					
+					if (st.execute()) {
+						// The plotting stuff expects a list of java.util.Dates, I believe. Since java.sql.Date is a subclass, I think this should work, but I don't know
+						// enough about Java's type system to know for sure. Worst case scenario, we convert the sql.Dates to strings and then parse them, something like
+						// 
+						//       xData.add(sdf.parse(rs.getDate("curDate").toString()))
+						//       
+						// using the "sdf" date parser defined in the testing block.
+						ResultSet rs = st.getResultSet();
+						List<java.util.Date> xData = new ArrayList<java.util.Date>();
+						List<Double> yData = new ArrayList<Double>();
+						while (rs.next()) {
+							xData.add(rs.getDate("curDate"));
+							yData.add(rs.getBigDecimal("curNetWorth").doubleValue());
+						}
+					
+						/*
+						// uncomment this block to test, comment out the above if database isn't available
+						List<java.util.Date> xData = new ArrayList<java.util.Date>();
+						List<Double> yData = new ArrayList<Double>();
+						DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+						xData.add(sdf.parse("2016-01-01"));
+						xData.add(sdf.parse("2015-02-05"));
+						xData.add(sdf.parse("2014-04-15"));
+						yData.add(1000.0);
+						yData.add(900.0);
+						yData.add(1312.52);
+						*/
+					
+						XYChart chart = new XYChartBuilder().width(800).height(600).title("Net worth trend").build();
+						chart.getStyler().setLegendVisible(false);
+						XYSeries series = chart.addSeries("blah", xData, yData);
+						series.setMarker(SeriesMarkers.NONE);
+					
+						new SwingWrapper(chart).displayChart();
 					}
-					
-					/*
-					// uncomment this block to test, comment out the above if database isn't available
-					List<java.util.Date> xData = new ArrayList<java.util.Date>();
-					List<Double> yData = new ArrayList<Double>();
-					DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-					xData.add(sdf.parse("2016-01-01"));
-					xData.add(sdf.parse("2015-02-05"));
-					xData.add(sdf.parse("2014-04-15"));
-					yData.add(1000.0);
-					yData.add(900.0);
-					yData.add(1312.52);
-					*/
-					
-					XYChart chart = new XYChartBuilder().width(800).height(600).title("Net worth trend").build();
-					chart.getStyler().setLegendVisible(false);
-					XYSeries series = chart.addSeries("blah", xData, yData);
-					series.setMarker(SeriesMarkers.NONE);
-					
-					new SwingWrapper(chart).displayChart();
 				} catch (Exception er) {
 					er.printStackTrace();
 					return;
