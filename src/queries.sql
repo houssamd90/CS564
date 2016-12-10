@@ -302,6 +302,6 @@ $$ LANGUAGE plpgsql;
 -------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION free_stock(id integer, curDate date, curTicker text, curAmount numeric(12,3)) RETURNS void AS $$
 BEGIN
-	INSERT INTO Strategies(id,date,ticker,count) values(user,curDate,curTicker,curAmount);
+	INSERT INTO Strategies(userid,date,ticker,count) values(id,curDate,curTicker,curAmount);
 END
 $$ LANGUAGE plpgsql;
