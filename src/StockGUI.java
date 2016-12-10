@@ -39,6 +39,8 @@ import org.knowm.xchart.SwingWrapper;
 
 import java.text.ParseException;
 
+import javax.swing.JCheckBox;
+
 public class StockGUI {
 
 	private JFrame frmStockMartket;
@@ -126,6 +128,10 @@ public class StockGUI {
 		frmStockMartket.getContentPane().add(txtDate);
 		txtDate.setColumns(10);
 		
+		JCheckBox chckbxEndowed = new JCheckBox("Endowed");
+		chckbxEndowed.setBounds(10, 52, 97, 23);
+		frmStockMartket.getContentPane().add(chckbxEndowed);
+		
 		JComboBox cmbBuySell = new JComboBox();
 		cmbBuySell.setModel(new DefaultComboBoxModel(new String[] {"Buy", "Sell"}));
 		cmbBuySell.setBounds(67, 205, 86, 20);
@@ -165,19 +171,27 @@ public class StockGUI {
 				
 				if(cmbBuySell.getSelectedIndex() == 0){ //Buy
 
+					Boolean endowed = chckbxEndowed.isSelected();
+					
 					if(!validDateForTransaction(date, ticker)){
 						JOptionPane.showMessageDialog(null,"Company didn't exist back then, please change date !");
 						return;
 					}
 					
-					if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
-						JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
-						return;
-					}
+					if(!endowed){
+						if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
+							JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
+							return;
+						}
+					} 
 					
-					//Looks like we have enough cash on hand for the transaction so
-					//let's go ahead with it
-					addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					//Looks like we have enough cash on hand (or its endowed) for 
+					//the transaction so let's go ahead with it
+					if(endowed){
+						addFreeTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					} else{
+						addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					}
 					
 				} else{ //Sell
 					if(!enoughStocksForTransaction(userID, date, ticker, quantity)){
@@ -562,6 +576,7 @@ public class StockGUI {
 		txtUSERID.setColumns(10);
 		txtUSERID.setBounds(67, 81, 86, 20);
 		frmStockMartket.getContentPane().add(txtUSERID);
+		
 	}
 	
 	//we will call in to the stored procedure to check if a transaction exists for the given date/ticker
@@ -654,6 +669,32 @@ public class StockGUI {
 			} }
 		}
 	}
+	
+	//add free transaction for current date/ticker/user to database (for endowed case)
+		private void addFreeTransaction(int userID, java.sql.Date date, String ticker, BigDecimal quantity){
+			
+			@SuppressWarnings("deprecation")
+			String sql="select free_stock(?,?,?,?)"; //userID, date, curTicker, quantity
+			
+			try {
+				st = con.prepareStatement(sql);
+				
+				st.setInt(1, userID );
+				st.setDate(2, date);
+				st.setString(3, ticker);
+				st.setBigDecimal(4, quantity);
+				
+				st.execute();
+			} catch (SQLException er) {
+				er.printStackTrace();
+			} finally{
+				if (st != null) { try {
+					st.close();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				} }
+			}
+		}
 	
 	private Boolean validDateForTransaction(java.sql.Date date, String ticker){
 		
