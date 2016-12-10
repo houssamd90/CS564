@@ -243,6 +243,7 @@ CREATE OR REPLACE FUNCTION oldest_observation(curTicker text) RETURNS date AS $$
 DECLARE oldest date;
 BEGIN
 	SELECT min(date) INTO oldest FROM Market_Observations WHERE ticker=curTicker;
+	RETURN oldest;
 END
 $$ LANGUAGE plpgsql;
 

@@ -164,6 +164,12 @@ public class StockGUI {
 				}
 				
 				if(cmbBuySell.getSelectedIndex() == 0){ //Buy
+
+					if(!validDateForTransaction(date, ticker)){
+						JOptionPane.showMessageDialog(null,"Company didn't exist back then, please change date !");
+						return;
+					}
+					
 					if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
 						JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
 						return;
@@ -322,8 +328,8 @@ public class StockGUI {
 						ResultSet result = st.getResultSet();
 						result.next();
 						//quantity
-						double quantity = result.getBigDecimal(1).doubleValue();
-						txtStockValue.setText(String.valueOf(quantity));
+						Double quantity = result.getBigDecimal(1).doubleValue();
+						txtQuantity2.setText(String.valueOf(quantity.intValue()));
 						//value
 						double value = quantity * tickerValue(ticker, curDate);
 						txtValue.setText(String.valueOf(value));
@@ -647,6 +653,36 @@ public class StockGUI {
 				e1.printStackTrace();
 			} }
 		}
+	}
+	
+	private Boolean validDateForTransaction(java.sql.Date date, String ticker){
+		
+		@SuppressWarnings("deprecation")
+		String sql="select oldest_observation(?)"; //ticker
+		java.sql.Date oldestDate = null;
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setString(1, ticker);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				oldestDate = result.getDate(1);
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return date.compareTo(oldestDate)>=0;
+		
 	}
 	
 	private Boolean enoughCashForTransaction(int userID, java.sql.Date date, String ticker, Double quantity){
