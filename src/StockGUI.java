@@ -26,6 +26,16 @@ import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.text.DateFormat;
+import java.util.List;
+import java.util.ArrayList;
+
+import org.knowm.xchart.XYChart;
+import org.knowm.xchart.XYChartBuilder;
+import org.knowm.xchart.XYSeries;
+import org.knowm.xchart.style.markers.SeriesMarkers;
+import org.knowm.xchart.QuickChart;
+import org.knowm.xchart.SwingWrapper;
 
 import java.text.ParseException;
 
@@ -52,6 +62,7 @@ public class StockGUI {
 	private JTextField txtDOB;
 	private JTextField txtCashOnHandNew;
 	Connection con;
+	private JTextField txtUSERID;
 	
 	/**
 	 * Launch the application.
@@ -101,17 +112,17 @@ public class StockGUI {
 		frmStockMartket.getContentPane().setLayout(null);
 		
 		txtTicker = new JTextField();
-		txtTicker.setBounds(67, 79, 86, 20);
+		txtTicker.setBounds(67, 112, 86, 20);
 		frmStockMartket.getContentPane().add(txtTicker);
 		txtTicker.setColumns(10);
 		
-		txtQuantity = new JTextField();
-		txtQuantity.setBounds(67, 120, 86, 20);
+		txtQuantity = new JTextField(); 
+		txtQuantity.setBounds(67, 143, 86, 20);
 		frmStockMartket.getContentPane().add(txtQuantity);
 		txtQuantity.setColumns(10);
 		
 		txtDate = new JTextField();
-		txtDate.setBounds(67, 161, 86, 20);
+		txtDate.setBounds(67, 174, 86, 20);
 		frmStockMartket.getContentPane().add(txtDate);
 		txtDate.setColumns(10);
 		
@@ -121,37 +132,63 @@ public class StockGUI {
 		frmStockMartket.getContentPane().add(cmbBuySell);
 		
 		JLabel lblNewLabel = new JLabel("Ticker");
-		lblNewLabel.setBounds(10, 82, 46, 14);
+		lblNewLabel.setBounds(10, 115, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel);
 		
 		JLabel lblNewLabel_1 = new JLabel("Quantity");
-		lblNewLabel_1.setBounds(10, 123, 57, 14);
+		lblNewLabel_1.setBounds(11, 146, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_1);
 		
 		JLabel lblNewLabel_2 = new JLabel("Date");
-		lblNewLabel_2.setBounds(10, 164, 46, 14);
+		lblNewLabel_2.setBounds(10, 178, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_2);
 		
 		JLabel lblNewLabel_3 = new JLabel("Action");
 		lblNewLabel_3.setBounds(10, 208, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_3);
 		
+		//buy/sell logic. 
 		JButton btnBuySell = new JButton("Submit");
 		btnBuySell.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				if (transactionExists()){
-					JOptionPane.showMessageDialog(null, "Write error"); 
-					return;
+				
+				int userID = Integer.parseInt(txtUSERID.getText());
+				java.sql.Date date = getSQLdate(txtDate.getText());
+				String ticker = txtTicker.getText();
+				int quantity = Integer.parseInt(txtQuantity.getText());
+				
+				//If a transaction for that user/day/ticker already exists in the
+				//database, delete it so we can add the current transaction
+				if (transactionExists(userID, date, ticker)){
+					deleteTransaction();
 				}
-				@SuppressWarnings("deprecation")
-				String sql="PUT SQL STATEMENT HERE";
-				try {
-					ResultSet resultSet = st.executeQuery(sql);
-				} catch (SQLException e) {
-					e.printStackTrace();
-					return;
+				
+				if(cmbBuySell.getSelectedIndex() == 0){ //Buy
+
+					if(!validDateForTransaction(date, ticker)){
+						JOptionPane.showMessageDialog(null,"Company didn't exist back then, please change date !");
+						return;
+					}
+					
+					if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
+						JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
+						return;
+					}
+					
+					//Looks like we have enough cash on hand for the transaction so
+					//let's go ahead with it
+					addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					
+				} else{ //Sell
+					if(!enoughStocksForTransaction(userID, date, ticker, quantity)){
+						JOptionPane.showMessageDialog(null,"Not enough stocks to perform transaction");
+						return;
+					}
+					
+					//Looks like we have enough stocks for the transaction so
+					//let's go ahead with it
+					addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity*(-1)));
 				}
-				System.out.println("SQL Command sent successfully");
 			}
 		});
 		btnBuySell.setBounds(29, 246, 95, 39);
@@ -187,19 +224,19 @@ public class StockGUI {
 		txtValue.setColumns(10);
 		
 		JLabel lblNewLabel_4 = new JLabel("User ID");
-		lblNewLabel_4.setBounds(190, 82, 70, 14);
+		lblNewLabel_4.setBounds(190, 82, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_4);
 		
 		JLabel lblNewLabel_5 = new JLabel("Ticker");
-		lblNewLabel_5.setBounds(190, 123, 70, 14);
+		lblNewLabel_5.setBounds(190, 123, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_5);
 		
 		JLabel lblNewLabel_6 = new JLabel("Quantity");
-		lblNewLabel_6.setBounds(190, 164, 57, 14);
+		lblNewLabel_6.setBounds(190, 164, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_6);
 		
 		JLabel lblNewLabel_7 = new JLabel("Value ($)");
-		lblNewLabel_7.setBounds(190, 208, 70, 14);
+		lblNewLabel_7.setBounds(190, 208, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_7);
 		
 		JSeparator separator_1 = new JSeparator();
@@ -232,19 +269,19 @@ public class StockGUI {
 		txtCashOnHand.setColumns(10);
 		
 		JLabel lblNewLabel_8 = new JLabel("User ID");
-		lblNewLabel_8.setBounds(400, 82, 86, 14);
+		lblNewLabel_8.setBounds(400, 82, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_8);
 		
 		JLabel lblNewLabel_9 = new JLabel("Date");
-		lblNewLabel_9.setBounds(400, 123, 76, 14);
+		lblNewLabel_9.setBounds(400, 123, 46, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_9);
 		
 		JLabel lblNewLabel_10 = new JLabel("Stock Value ($)");
-		lblNewLabel_10.setBounds(400, 164, 100, 14);
+		lblNewLabel_10.setBounds(400, 164, 72, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_10);
 		
 		JLabel lblNewLabel_11 = new JLabel("Cash on Hand ($)");
-		lblNewLabel_11.setBounds(400, 208, 109, 14);
+		lblNewLabel_11.setBounds(400, 208, 100, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_11);
 		
 		JLabel lblBuysell = new JLabel("Buy/Sell");
@@ -262,14 +299,42 @@ public class StockGUI {
 		lblPortofollio.setBounds(454, 26, 95, 20);
 		frmStockMartket.getContentPane().add(lblPortofollio);
 		
+		//gets the quantity and stock value for a current ticker/user combo as of today
+		//txtUserID, txtTicker2, txtQuantity2, txtValue
 		JButton btnUpdate2 = new JButton("Update");
 		btnUpdate2.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				
 				@SuppressWarnings("deprecation")
-				String sql="PUT SQL STATEMENT HERE";
+				
+				int userID = Integer.parseInt(txtUserID.getText());
+				String ticker = txtTicker2.getText();
+				//get current date
+				java.util.Calendar cal = java.util.Calendar.getInstance();
+				java.util.Date utilDate = cal.getTime();
+				java.sql.Date curDate = new Date(utilDate.getTime());
+				
+				String sql="select current_holdings(?,?,?)"; //userID, date, ticker
 				try {
-					ResultSet resultSet = st.executeQuery(sql);
+					//Stock Value SQL call
+					st = con.prepareStatement(sql);
+					
+					st.setInt(1, userID );
+					st.setDate(2, curDate);
+					st.setString(3, ticker);
+					
+					//if SQL call successful, grab the returned result and set it
+					//to the quantity txtbox and the calculate the Value textbox
+					if(st.execute()){
+						ResultSet result = st.getResultSet();
+						result.next();
+						//quantity
+						Double quantity = result.getBigDecimal(1).doubleValue();
+						txtQuantity2.setText(String.valueOf(quantity.intValue()));
+						//value
+						double value = quantity * tickerValue(ticker, curDate);
+						txtValue.setText(String.valueOf(value));
+					}
+					
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
@@ -277,7 +342,6 @@ public class StockGUI {
 					if (st != null) { try {
 						st.close();
 					} catch (SQLException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					} }
 				}
@@ -287,17 +351,60 @@ public class StockGUI {
 		btnUpdate2.setBounds(190, 246, 95, 39);
 		frmStockMartket.getContentPane().add(btnUpdate2);
 		
+		//Updates portofolio fields (Stock value and Cash on hand for a current date)
+		// txtStockValue for stock value txtCashOnHand for cash on hand
 		JButton btnUpdate3 = new JButton("Update");
 		btnUpdate3.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				@SuppressWarnings("deprecation")
-				String sql="PUT SQL STATEMENT HERE";
+				
+				int userID = Integer.parseInt(txtUser3.getText());
+				java.sql.Date curDate = getSQLdate(txtDate3.getText());
+				
+				String stockValueSql="select stock_worth(?,?)"; //userID, curDate
+				String cashOnHandSql="select current_cash(?,?)"; //userID, curDate
 				try {
-					st.execute(sql);
+					//Stock Value SQL call
+					st = con.prepareStatement(stockValueSql);
+					
+					st.setInt(1, userID );
+					st.setDate(2, curDate);
+					
+					//if SQL call successful, grab the returned result and set it
+					//to the stockValue txtbox
+					if(st.execute()){
+						ResultSet stockResult = st.getResultSet();
+						stockResult.next();
+						BigDecimal stockValue = stockResult.getBigDecimal(1);
+						txtStockValue.setText(stockValue.toString());
+					}
+					
+					//Cash on hand SQL call
+					st = con.prepareStatement(cashOnHandSql);
+					
+					st.setInt(1, userID );
+					st.setDate(2, curDate);
+					
+					//if SQL call successful, grab the returned result and set it
+					//to the cashOnHand txtbox
+					if(st.execute()){
+						ResultSet cashResult = st.getResultSet();
+						cashResult.next();
+						BigDecimal cashOnHand = cashResult.getBigDecimal(1);
+						txtCashOnHand.setText(cashOnHand.toString());
+					}
+					
 				} catch (SQLException er) {
 					er.printStackTrace();
 					return;
+				} finally{
+					if (st != null) { try {
+						st.close();
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					} }
 				}
+				
 				System.out.println("SQL Command sent successfully");
 			}
 		});
@@ -309,6 +416,55 @@ public class StockGUI {
 		//Put graphing stuff here. Can get user id from txtUserID and ticker from txtTicker2
 		btnGraph.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				@SuppressWarnings("deprecation")
+				String sql="net_worth_trending(" + txtUserID + ")";
+				try {
+					 // The plotting stuff expects a list of java.util.Dates, I believe. Since java.sql.Date is a subclass, I think this should work, but I don't know
+					 // enough about Java's type system to know for sure. Worst case scenario, we convert the sql.Dates to strings and then parse them, something like
+					 // 
+					 //       xData.add(sdf.parse(rs.getDate("curDate").toString()))
+					 //       
+					 // using the "sdf" date parser defined in the testing block.
+					ResultSet rs = st.executeQuery(sql);
+					List<java.util.Date> xData = new ArrayList<java.util.Date>();
+					List<Double> yData = new ArrayList<Double>();
+					while (rs.next()) {
+						xData.add(rs.getDate("curDate"));
+						yData.add(rs.getBigDecimal("curNetWorth").doubleValue());
+					}
+					
+					/*
+					// uncomment this block to test, comment out the above if database isn't available
+					List<java.util.Date> xData = new ArrayList<java.util.Date>();
+					List<Double> yData = new ArrayList<Double>();
+					DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+					xData.add(sdf.parse("2016-01-01"));
+					xData.add(sdf.parse("2015-02-05"));
+					xData.add(sdf.parse("2014-04-15"));
+					yData.add(1000.0);
+					yData.add(900.0);
+					yData.add(1312.52);
+					*/
+					
+					XYChart chart = new XYChartBuilder().width(800).height(600).title("Net worth trend").build();
+					chart.getStyler().setLegendVisible(false);
+					XYSeries series = chart.addSeries("blah", xData, yData);
+					series.setMarker(SeriesMarkers.NONE);
+					
+					new SwingWrapper(chart).displayChart();
+				} catch (Exception er) {
+					er.printStackTrace();
+					return;
+				} finally {
+					if (st != null) {
+						try {
+							st.close();
+						} catch (SQLException er) {
+							er.printStackTrace();
+							return;
+						}
+					}
+				}
 			}
 		});
 		btnGraph.setBounds(283, 246, 95, 39);
@@ -320,15 +476,15 @@ public class StockGUI {
 		frmStockMartket.getContentPane().add(separator_2);
 		
 		JLabel label = new JLabel("User ID");
-		label.setBounds(646, 82, 86, 14);
+		label.setBounds(646, 82, 46, 14);
 		frmStockMartket.getContentPane().add(label);
 		
 		JLabel lblName = new JLabel("Name");
-		lblName.setBounds(646, 123, 86, 14);
+		lblName.setBounds(646, 123, 46, 14);
 		frmStockMartket.getContentPane().add(lblName);
 		
 		JLabel lblDateOfBirth = new JLabel("Date of Birth");
-		lblDateOfBirth.setBounds(646, 164, 100, 14);
+		lblDateOfBirth.setBounds(646, 164, 72, 14);
 		frmStockMartket.getContentPane().add(lblDateOfBirth);
 		
 		txtUserIDnew = new JTextField();
@@ -351,22 +507,14 @@ public class StockGUI {
 		lblNewUser.setBounds(720, 26, 95, 20);
 		frmStockMartket.getContentPane().add(lblNewUser);
 		
+		//Create new user
 		JButton btnCreate = new JButton("Create");
 		btnCreate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+
 				int userID = Integer.parseInt(txtUserIDnew.getText());
 				String name = txtName.getText();
-				//get date
-				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-				java.util.Date parsed = null;
-				try {
-					parsed = format.parse(txtDOB.getText());
-				} catch (ParseException e2) {
-					// TODO Auto-generated catch block
-					e2.printStackTrace();
-				}
-				java.sql.Date dob = new java.sql.Date(parsed.getTime());
-				//
+				java.sql.Date dob = getSQLdate(txtDOB.getText());
 				BigDecimal cash = BigDecimal.valueOf(Double.parseDouble(txtCashOnHandNew.getText()));
 				
 				@SuppressWarnings("deprecation")
@@ -388,29 +536,233 @@ public class StockGUI {
 					if (st != null) { try {
 						st.close();
 					} catch (SQLException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					} }
 				}
 			}
 		});
+		
 		btnCreate.setBounds(731, 249, 95, 33);
 		frmStockMartket.getContentPane().add(btnCreate);
 		
 		JLabel label_1 = new JLabel("Cash on Hand ($)");
-		label_1.setBounds(646, 208, 109, 14);
+		label_1.setBounds(646, 208, 100, 14);
 		frmStockMartket.getContentPane().add(label_1);
 		
 		txtCashOnHandNew = new JTextField();
 		txtCashOnHandNew.setColumns(10);
 		txtCashOnHandNew.setBounds(756, 205, 86, 20);
 		frmStockMartket.getContentPane().add(txtCashOnHandNew);
+		
+		JLabel lblTxtuserid = new JLabel("User ID");
+		lblTxtuserid.setBounds(10, 82, 46, 14);
+		frmStockMartket.getContentPane().add(lblTxtuserid);
+		
+		txtUSERID = new JTextField();
+		txtUSERID.setColumns(10);
+		txtUSERID.setBounds(67, 81, 86, 20);
+		frmStockMartket.getContentPane().add(txtUSERID);
 	}
 	
 	//we will call in to the stored procedure to check if a transaction exists for the given date/ticker
 	//inputed by user. If it does, we will then execute a remove_transaction followed by an add_transaction
 	//command to replace the old transaction with the new
-	private boolean transactionExists(){
-		return true;
+	private boolean transactionExists(int userID, java.sql.Date date, String ticker){
+	
+		Boolean transactionExists = false;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select is_transaction(?,?,?)"; //userID, date, curTicker
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			
+			//if SQL call successful, grab the returned result and set it
+			//to the return value
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				transactionExists = result.getBoolean(1);
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return transactionExists;
+	}
+	
+	//delete transaction for current date/ticker/user from database
+	private void deleteTransaction(){
+		int userID = Integer.parseInt(txtUSERID.getText());
+		java.sql.Date date = getSQLdate(txtDate.getText());
+		String ticker = txtTicker.getText();
+		
+		@SuppressWarnings("deprecation")
+		String sql="select remove_transaction(?,?,?)"; //userID, date, curTicker
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			
+			st.execute();
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+	}
+	
+	//add transaction for current date/ticker/user to database
+	private void addCurTransaction(int userID, java.sql.Date date, String ticker, BigDecimal quantity){
+		
+		@SuppressWarnings("deprecation")
+		String sql="select add_transaction(?,?,?,?)"; //userID, date, curTicker, quantity
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			st.setBigDecimal(4, quantity);
+			
+			st.execute();
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+	}
+	
+	private Boolean validDateForTransaction(java.sql.Date date, String ticker){
+		
+		@SuppressWarnings("deprecation")
+		String sql="select oldest_observation(?)"; //ticker
+		java.sql.Date oldestDate = null;
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setString(1, ticker);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				oldestDate = result.getDate(1);
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return date.compareTo(oldestDate)>=0;
+		
+	}
+	
+	private Boolean enoughCashForTransaction(int userID, java.sql.Date date, String ticker, Double quantity){
+		Double curCash = 0.00;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select current_cash(?,?)"; //userID, date
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				curCash = result.getBigDecimal(1).doubleValue();
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return curCash > (quantity * tickerValue(ticker, date) );
+		
+	}
+	
+	private Boolean enoughStocksForTransaction(int userID, java.sql.Date date, String ticker, int quantity){
+		int heldQuantity = 0;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select current_holdings(?,?,?)"; //userID, date, ticker
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setInt(1, userID );
+			st.setDate(2, date);
+			st.setString(3, ticker);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				heldQuantity = result.getBigDecimal(1).intValue();
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return heldQuantity > quantity;
+		
+	}
+	
+	//this is just a stub for now, it should return the ticker value for a given date.....
+	private Double tickerValue(String ticker, java.sql.Date date){
+		return 20.00;
+	}
+	
+	//Returns a java.sql.date given a date string in the format yyyy-MM-dd
+	private java.sql.Date getSQLdate(String date){
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+		java.util.Date parsed = null;
+		try {
+			parsed = format.parse(date);
+		} catch (ParseException e2) {
+			e2.printStackTrace();
+		}
+		
+		return new java.sql.Date(parsed.getTime());
 	}
 }
