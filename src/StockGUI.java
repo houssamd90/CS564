@@ -750,7 +750,34 @@ public class StockGUI {
 	
 	//this is just a stub for now, it should return the ticker value for a given date.....
 	private Double tickerValue(String ticker, java.sql.Date date){
-		return 20.00;
+		double value = 0.0;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select current_price(?,?)"; //ticker, date
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setString(1, ticker );
+			st.setDate(2, date);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				value = result.getBigDecimal(1).doubleValue();
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return value;
+
 	}
 	
 	//Returns a java.sql.date given a date string in the format yyyy-MM-dd
