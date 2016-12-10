@@ -284,3 +284,19 @@ BEGIN
 	INSERT INTO Strategies(userid,date,ticker,count) values(id,curDate,curTicker,curAmount);
 END
 $$ LANGUAGE plpgsql;
+
+-------------------------------------------------------------------------------
+-- NAME: has_future_transactions
+-- DESCRIPTIONS: Checks whether a proposed stock transaction would occur out of order
+-- PARAMETERS:
+--  date   date - The date of the proposed transaction
+--  ticker text - The proposed ticker to look for
+-------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION has_future_transactions(curDate date) RETURNS boolean AS $$
+DECLARE found boolean := FALSE;
+BEGIN
+	SELECT true INTO found FROM Market_Observations 
+		WHERE date >= curDate LIMIT 1;
+	RETURN found;
+END
+$$ LANGUAGE plpgsql;
