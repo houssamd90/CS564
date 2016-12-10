@@ -100,7 +100,7 @@ DECLARE max_date date;
 BEGIN
 	SELECT min(date) INTO min_date FROM Strategies WHERE Strategies.userID = id;
 	SELECT max(date) INTO max_date FROM Strategies WHERE Strategies.userID = id;
-	RETURN QUERY SELECT days.days::date, total_current_holdings(1,days.days::date) 
+	RETURN QUERY SELECT days.days::date, total_current_holdings(id,days.days::date) 
 		FROM generate_series(min_date,max_date,'1 day'::interval) days;
 END
 $$ LANGUAGE plpgsql;
@@ -217,7 +217,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION add_new_user(id integer, usrName text, dob date, coh numeric(12,2)) RETURNS void AS $$
 BEGIN
 	INSERT INTO Investors(userid,name,date_of_birth) values(id,usrName,dob);
-	INSERT INTO Cash_On_Hand(date,userid,cash) values('1980-01-02',id,coh);	
+	INSERT INTO Cash_On_Hand(date,transaction,userid,cash) values('1980-01-02',1,id,coh);	
 END
 $$ LANGUAGE plpgsql;
 
