@@ -67,27 +67,6 @@ END
 $$ LANGUAGE plpgsql;
 
 -------------------------------------------------------------------------------
--- NAME:        cpi_adjust
--- DESCRIPTION: Returns the percentage of inflation since our first stock observation
--- PARAMETERS: 
---  curDate date - Effective date for calculating inflation
--------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION cpi_adjust(curDate date) RETURNS numeric(12,2) AS $$
-DECLARE minimum_cpi numeric(12,2);
-DECLARE maximum_cpi numeric(12,2);
-BEGIN
-	SELECT min(cpi) 
-		INTO minimum_cpi 
-		FROM CPI;
-	SELECT cpi 
-		INTO maximum_cpi 
-		FROM CPI 
-		WHERE to_char(curDate,'YYYY-MM') = to_char(date,'YYYY-MM');
-	RETURN  minimum_cpi / (maximum_cpi - minimum_cpi);
-END
-$$ LANGUAGE plpgsql;
-
--------------------------------------------------------------------------------
 -- NAME:        stock_worth
 -- DESCRIPTION: Calculates the total value of stock holdings for the user.
 -- PARAMETERS:
