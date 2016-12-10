@@ -262,3 +262,11 @@ BEGIN
 	RETURN exists;
 END
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION current_price(curTicker text, curDate date) RETURNS numeric(12,2) AS $$
+DECLARE price numeric(12,2);
+BEGIN
+	SELECT close INTO price FROM Market_Observations WHERE date = (SELECT max(date) from Market_Observations where date<= curDate AND ticker = curTicker) AND ticker = curTicker;
+	
+END
+$$ LANGUAGE plpgsql;
