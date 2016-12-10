@@ -39,6 +39,8 @@ import org.knowm.xchart.SwingWrapper;
 
 import java.text.ParseException;
 
+import javax.swing.JCheckBox;
+
 public class StockGUI {
 
 	private JFrame frmStockMartket;
@@ -63,6 +65,9 @@ public class StockGUI {
 	private JTextField txtCashOnHandNew;
 	Connection con;
 	private JTextField txtUSERID;
+	
+	//last date with stock data from database
+	private final java.sql.Date FINAL_DATE = getSQLdate("2016-11-04");
 	
 	/**
 	 * Launch the application.
@@ -107,44 +112,48 @@ public class StockGUI {
 		
 		frmStockMartket = new JFrame();
 		frmStockMartket.setTitle("Stock Market");
-		frmStockMartket.setBounds(100, 100, 897, 356);
+		frmStockMartket.setBounds(100, 100, 1053, 356);
 		frmStockMartket.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmStockMartket.getContentPane().setLayout(null);
 		
 		txtTicker = new JTextField();
-		txtTicker.setBounds(67, 112, 86, 20);
+		txtTicker.setBounds(104, 112, 86, 20);
 		frmStockMartket.getContentPane().add(txtTicker);
 		txtTicker.setColumns(10);
 		
 		txtQuantity = new JTextField(); 
-		txtQuantity.setBounds(67, 143, 86, 20);
+		txtQuantity.setBounds(104, 143, 86, 20);
 		frmStockMartket.getContentPane().add(txtQuantity);
 		txtQuantity.setColumns(10);
 		
 		txtDate = new JTextField();
-		txtDate.setBounds(67, 174, 86, 20);
+		txtDate.setBounds(104, 174, 86, 20);
 		frmStockMartket.getContentPane().add(txtDate);
 		txtDate.setColumns(10);
 		
+		JCheckBox chckbxEndowed = new JCheckBox("Endowed");
+		chckbxEndowed.setBounds(10, 52, 141, 23);
+		frmStockMartket.getContentPane().add(chckbxEndowed);
+		
 		JComboBox cmbBuySell = new JComboBox();
 		cmbBuySell.setModel(new DefaultComboBoxModel(new String[] {"Buy", "Sell"}));
-		cmbBuySell.setBounds(67, 205, 86, 20);
+		cmbBuySell.setBounds(104, 205, 86, 20);
 		frmStockMartket.getContentPane().add(cmbBuySell);
 		
 		JLabel lblNewLabel = new JLabel("Ticker");
-		lblNewLabel.setBounds(10, 115, 46, 14);
+		lblNewLabel.setBounds(10, 115, 84, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel);
 		
 		JLabel lblNewLabel_1 = new JLabel("Quantity");
-		lblNewLabel_1.setBounds(11, 146, 46, 14);
+		lblNewLabel_1.setBounds(11, 146, 83, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_1);
 		
 		JLabel lblNewLabel_2 = new JLabel("Date");
-		lblNewLabel_2.setBounds(10, 178, 46, 14);
+		lblNewLabel_2.setBounds(10, 178, 84, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_2);
 		
 		JLabel lblNewLabel_3 = new JLabel("Action");
-		lblNewLabel_3.setBounds(10, 208, 46, 14);
+		lblNewLabel_3.setBounds(10, 208, 84, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_3);
 		
 		//buy/sell logic. 
@@ -157,6 +166,11 @@ public class StockGUI {
 				String ticker = txtTicker.getText();
 				int quantity = Integer.parseInt(txtQuantity.getText());
 				
+				if(date.compareTo(FINAL_DATE)>0){
+					JOptionPane.showMessageDialog(null,"No stock data available past 2016-11-04, please use an earlier date");
+					return;
+				}
+				
 				//If a transaction for that user/day/ticker already exists in the
 				//database, delete it so we can add the current transaction
 				if (transactionExists(userID, date, ticker)){
@@ -165,19 +179,27 @@ public class StockGUI {
 				
 				if(cmbBuySell.getSelectedIndex() == 0){ //Buy
 
+					Boolean endowed = chckbxEndowed.isSelected();
+					
 					if(!validDateForTransaction(date, ticker)){
 						JOptionPane.showMessageDialog(null,"Company didn't exist back then, please change date !");
 						return;
 					}
 					
-					if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
-						JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
-						return;
-					}
+					if(!endowed){
+						if(!enoughCashForTransaction(userID, date, ticker, (double) quantity)){
+							JOptionPane.showMessageDialog(null,"Not enough cash on hand to perform transaction");
+							return;
+						}
+					} 
 					
-					//Looks like we have enough cash on hand for the transaction so
-					//let's go ahead with it
-					addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					//Looks like we have enough cash on hand (or its endowed) for 
+					//the transaction so let's go ahead with it
+					if(endowed){
+						addFreeTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					} else{
+						addCurTransaction(userID, date, ticker, BigDecimal.valueOf(quantity));
+					}
 					
 				} else{ //Sell
 					if(!enoughStocksForTransaction(userID, date, ticker, quantity)){
@@ -191,112 +213,112 @@ public class StockGUI {
 				}
 			}
 		});
-		btnBuySell.setBounds(29, 246, 95, 39);
+		btnBuySell.setBounds(29, 246, 122, 39);
 		frmStockMartket.getContentPane().add(btnBuySell);
 		
 		JSeparator separator = new JSeparator();
 		separator.setOrientation(SwingConstants.VERTICAL);
-		separator.setBounds(178, 11, 2, 280);
+		separator.setBounds(207, 11, 2, 280);
 		frmStockMartket.getContentPane().add(separator);
 		
 		txtUserID = new JTextField();
-		txtUserID.setBounds(270, 79, 86, 20);
+		txtUserID.setBounds(361, 79, 86, 20);
 		frmStockMartket.getContentPane().add(txtUserID);
 		txtUserID.setColumns(10);
 		
 		txtTicker2 = new JTextField();
-		txtTicker2.setBounds(270, 120, 86, 20);
+		txtTicker2.setBounds(361, 120, 86, 20);
 		frmStockMartket.getContentPane().add(txtTicker2);
 		txtTicker2.setColumns(10);
 		
 		txtQuantity2 = new JTextField();
 		txtQuantity2.setEditable(false);
 		txtQuantity2.setEnabled(false);
-		txtQuantity2.setBounds(270, 161, 86, 20);
+		txtQuantity2.setBounds(361, 161, 86, 20);
 		frmStockMartket.getContentPane().add(txtQuantity2);
 		txtQuantity2.setColumns(10);
 		
 		txtValue = new JTextField();
 		txtValue.setEnabled(false);
 		txtValue.setEditable(false);
-		txtValue.setBounds(270, 205, 86, 20);
+		txtValue.setBounds(361, 205, 86, 20);
 		frmStockMartket.getContentPane().add(txtValue);
 		txtValue.setColumns(10);
 		
 		JLabel lblNewLabel_4 = new JLabel("User ID");
-		lblNewLabel_4.setBounds(190, 82, 46, 14);
+		lblNewLabel_4.setBounds(238, 82, 89, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_4);
 		
 		JLabel lblNewLabel_5 = new JLabel("Ticker");
-		lblNewLabel_5.setBounds(190, 123, 46, 14);
+		lblNewLabel_5.setBounds(238, 123, 89, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_5);
 		
 		JLabel lblNewLabel_6 = new JLabel("Quantity");
-		lblNewLabel_6.setBounds(190, 164, 46, 14);
+		lblNewLabel_6.setBounds(238, 164, 89, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_6);
 		
 		JLabel lblNewLabel_7 = new JLabel("Value ($)");
-		lblNewLabel_7.setBounds(190, 208, 46, 14);
+		lblNewLabel_7.setBounds(238, 208, 89, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_7);
 		
 		JSeparator separator_1 = new JSeparator();
 		separator_1.setOrientation(SwingConstants.VERTICAL);
-		separator_1.setBounds(388, 11, 2, 280);
+		separator_1.setBounds(492, 11, 2, 280);
 		frmStockMartket.getContentPane().add(separator_1);
 		
 		txtUser3 = new JTextField();
-		txtUser3.setBounds(510, 79, 86, 20);
+		txtUser3.setBounds(655, 79, 86, 20);
 		frmStockMartket.getContentPane().add(txtUser3);
 		txtUser3.setColumns(10);
 		
 		txtDate3 = new JTextField();
-		txtDate3.setBounds(510, 120, 86, 20);
+		txtDate3.setBounds(655, 120, 86, 20);
 		frmStockMartket.getContentPane().add(txtDate3);
 		txtDate3.setColumns(10);
 		
 		txtStockValue = new JTextField();
 		txtStockValue.setEnabled(false);
 		txtStockValue.setEditable(false);
-		txtStockValue.setBounds(510, 161, 86, 20);
+		txtStockValue.setBounds(655, 161, 86, 20);
 		frmStockMartket.getContentPane().add(txtStockValue);
 		txtStockValue.setColumns(10);
 		
 		txtCashOnHand = new JTextField();
 		txtCashOnHand.setEnabled(false);
 		txtCashOnHand.setEditable(false);
-		txtCashOnHand.setBounds(510, 205, 86, 20);
+		txtCashOnHand.setBounds(655, 205, 86, 20);
 		frmStockMartket.getContentPane().add(txtCashOnHand);
 		txtCashOnHand.setColumns(10);
 		
 		JLabel lblNewLabel_8 = new JLabel("User ID");
-		lblNewLabel_8.setBounds(400, 82, 46, 14);
+		lblNewLabel_8.setBounds(504, 82, 127, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_8);
 		
 		JLabel lblNewLabel_9 = new JLabel("Date");
-		lblNewLabel_9.setBounds(400, 123, 46, 14);
+		lblNewLabel_9.setBounds(504, 123, 141, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_9);
 		
 		JLabel lblNewLabel_10 = new JLabel("Stock Value ($)");
-		lblNewLabel_10.setBounds(400, 164, 72, 14);
+		lblNewLabel_10.setBounds(504, 164, 152, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_10);
 		
 		JLabel lblNewLabel_11 = new JLabel("Cash on Hand ($)");
-		lblNewLabel_11.setBounds(400, 208, 100, 14);
+		lblNewLabel_11.setBounds(504, 208, 152, 14);
 		frmStockMartket.getContentPane().add(lblNewLabel_11);
 		
 		JLabel lblBuysell = new JLabel("Buy/Sell");
 		lblBuysell.setFont(new Font("Tahoma", Font.BOLD, 16));
-		lblBuysell.setBounds(48, 26, 76, 20);
+		lblBuysell.setBounds(48, 26, 127, 20);
 		frmStockMartket.getContentPane().add(lblBuysell);
 		
 		JLabel lblTickerStatus = new JLabel("Ticker Status");
 		lblTickerStatus.setFont(new Font("Tahoma", Font.BOLD, 16));
-		lblTickerStatus.setBounds(225, 26, 119, 20);
+		lblTickerStatus.setBounds(278, 26, 167, 20);
 		frmStockMartket.getContentPane().add(lblTickerStatus);
 		
 		JLabel lblPortofollio = new JLabel("Portofolio");
 		lblPortofollio.setFont(new Font("Tahoma", Font.BOLD, 16));
-		lblPortofollio.setBounds(454, 26, 95, 20);
+		lblPortofollio.setBounds(578, 26, 141, 20);
 		frmStockMartket.getContentPane().add(lblPortofollio);
 		
 		//gets the quantity and stock value for a current ticker/user combo as of today
@@ -348,7 +370,7 @@ public class StockGUI {
 				System.out.println("SQL Command sent successfully");
 			}
 		});
-		btnUpdate2.setBounds(190, 246, 95, 39);
+		btnUpdate2.setBounds(232, 246, 119, 39);
 		frmStockMartket.getContentPane().add(btnUpdate2);
 		
 		//Updates portofolio fields (Stock value and Cash on hand for a current date)
@@ -408,7 +430,7 @@ public class StockGUI {
 				System.out.println("SQL Command sent successfully");
 			}
 		});
-		btnUpdate3.setBounds(454, 246, 95, 39);
+		btnUpdate3.setBounds(577, 246, 119, 39);
 		frmStockMartket.getContentPane().add(btnUpdate3);
 		
 		JButton btnGraph = new JButton("Trending");
@@ -473,44 +495,44 @@ public class StockGUI {
 				}
 			}
 		});
-		btnGraph.setBounds(283, 246, 95, 39);
+		btnGraph.setBounds(354, 246, 119, 39);
 		frmStockMartket.getContentPane().add(btnGraph);
 		
 		JSeparator separator_2 = new JSeparator();
 		separator_2.setOrientation(SwingConstants.VERTICAL);
-		separator_2.setBounds(634, 11, 2, 280);
+		separator_2.setBounds(764, 11, 2, 280);
 		frmStockMartket.getContentPane().add(separator_2);
 		
 		JLabel label = new JLabel("User ID");
-		label.setBounds(646, 82, 46, 14);
+		label.setBounds(776, 82, 141, 14);
 		frmStockMartket.getContentPane().add(label);
 		
 		JLabel lblName = new JLabel("Name");
-		lblName.setBounds(646, 123, 46, 14);
+		lblName.setBounds(776, 123, 141, 14);
 		frmStockMartket.getContentPane().add(lblName);
 		
 		JLabel lblDateOfBirth = new JLabel("Date of Birth");
-		lblDateOfBirth.setBounds(646, 164, 72, 14);
+		lblDateOfBirth.setBounds(776, 164, 141, 14);
 		frmStockMartket.getContentPane().add(lblDateOfBirth);
 		
 		txtUserIDnew = new JTextField();
 		txtUserIDnew.setColumns(10);
-		txtUserIDnew.setBounds(756, 79, 86, 20);
+		txtUserIDnew.setBounds(920, 79, 86, 20);
 		frmStockMartket.getContentPane().add(txtUserIDnew);
 		
 		txtName = new JTextField();
 		txtName.setColumns(10);
-		txtName.setBounds(756, 120, 86, 20);
+		txtName.setBounds(920, 120, 86, 20);
 		frmStockMartket.getContentPane().add(txtName);
 		
 		txtDOB = new JTextField();
 		txtDOB.setColumns(10);
-		txtDOB.setBounds(756, 161, 86, 20);
+		txtDOB.setBounds(920, 161, 86, 20);
 		frmStockMartket.getContentPane().add(txtDOB);
 		
 		JLabel lblNewUser = new JLabel("New User");
 		lblNewUser.setFont(new Font("Tahoma", Font.BOLD, 16));
-		lblNewUser.setBounds(720, 26, 95, 20);
+		lblNewUser.setBounds(855, 26, 152, 20);
 		frmStockMartket.getContentPane().add(lblNewUser);
 		
 		//Create new user
@@ -548,26 +570,27 @@ public class StockGUI {
 			}
 		});
 		
-		btnCreate.setBounds(731, 249, 95, 33);
+		btnCreate.setBounds(855, 249, 119, 33);
 		frmStockMartket.getContentPane().add(btnCreate);
 		
 		JLabel label_1 = new JLabel("Cash on Hand ($)");
-		label_1.setBounds(646, 208, 100, 14);
+		label_1.setBounds(776, 208, 147, 14);
 		frmStockMartket.getContentPane().add(label_1);
 		
 		txtCashOnHandNew = new JTextField();
 		txtCashOnHandNew.setColumns(10);
-		txtCashOnHandNew.setBounds(756, 205, 86, 20);
+		txtCashOnHandNew.setBounds(920, 205, 86, 20);
 		frmStockMartket.getContentPane().add(txtCashOnHandNew);
 		
 		JLabel lblTxtuserid = new JLabel("User ID");
-		lblTxtuserid.setBounds(10, 82, 46, 14);
+		lblTxtuserid.setBounds(10, 82, 86, 14);
 		frmStockMartket.getContentPane().add(lblTxtuserid);
 		
 		txtUSERID = new JTextField();
 		txtUSERID.setColumns(10);
-		txtUSERID.setBounds(67, 81, 86, 20);
+		txtUSERID.setBounds(104, 82, 86, 20);
 		frmStockMartket.getContentPane().add(txtUSERID);
+		
 	}
 	
 	//we will call in to the stored procedure to check if a transaction exists for the given date/ticker
@@ -660,6 +683,32 @@ public class StockGUI {
 			} }
 		}
 	}
+	
+	//add free transaction for current date/ticker/user to database (for endowed case)
+		private void addFreeTransaction(int userID, java.sql.Date date, String ticker, BigDecimal quantity){
+			
+			@SuppressWarnings("deprecation")
+			String sql="select free_stock(?,?,?,?)"; //userID, date, curTicker, quantity
+			
+			try {
+				st = con.prepareStatement(sql);
+				
+				st.setInt(1, userID );
+				st.setDate(2, date);
+				st.setString(3, ticker);
+				st.setBigDecimal(4, quantity);
+				
+				st.execute();
+			} catch (SQLException er) {
+				er.printStackTrace();
+			} finally{
+				if (st != null) { try {
+					st.close();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				} }
+			}
+		}
 	
 	private Boolean validDateForTransaction(java.sql.Date date, String ticker){
 		

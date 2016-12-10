@@ -12,7 +12,12 @@ DECLARE price numeric(12,2);
 DECLARE newCash numeric(12,2);
 BEGIN
 	INSERT INTO Strategies(userID,date,ticker,count) values(id,curDate,curTicker,curAmount);
-	SELECT close*curAmount INTO price FROM Market_Observations WHERE date = (SELECT max(date) from Market_Observations where date<= curDate AND ticker = curTicker) AND ticker = curTicker;
+	SELECT close*curAmount INTO price 
+		FROM Market_Observations 
+		WHERE date = (SELECT max(date) FROM Market_Observations 
+			WHERE date<= curDate AND 
+			ticker = curTicker) AND 
+		ticker = curTicker;
 	newCash := current_cash(id,curDate) - price;
 	PERFORM change_cash(id,curDate,newCash);
 
@@ -62,27 +67,6 @@ END
 $$ LANGUAGE plpgsql;
 
 -------------------------------------------------------------------------------
--- NAME:        cpi_adjust
--- DESCRIPTION: Returns the percentage of inflation since our first stock observation
--- PARAMETERS: 
---  curDate date - Effective date for calculating inflation
--------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION cpi_adjust(curDate date) RETURNS numeric(12,2) AS $$
-DECLARE minimum_cpi numeric(12,2);
-DECLARE maximum_cpi numeric(12,2);
-BEGIN
-	SELECT min(cpi) 
-		INTO minimum_cpi 
-		FROM CPI;
-	SELECT cpi 
-		INTO maximum_cpi 
-		FROM CPI 
-		WHERE to_char(curDate,'YYYY-MM') = to_char(date,'YYYY-MM');
-	RETURN  minimum_cpi / (maximum_cpi - minimum_cpi);
-END
-$$ LANGUAGE plpgsql;
-
--------------------------------------------------------------------------------
 -- NAME:        stock_worth
 -- DESCRIPTION: Calculates the total value of stock holdings for the user.
 -- PARAMETERS:
@@ -95,7 +79,9 @@ BEGIN
 	SELECT sum(stock_values.value) INTO worth
 		FROM (SELECT (P.amount * M.close) AS value
 			FROM current_tickers(userID,curDate) P, Market_Observations M
-			WHERE P.ticker = M.ticker AND M.date = (SELECT max(date) from Market_Observations where date <= curDate and ticker = M.ticker)) AS stock_values;
+			WHERE P.ticker = M.ticker AND 
+				M.date = (SELECT max(date) FROM Market_Observations 
+					WHERE date <= curDate AND ticker = M.ticker)) AS stock_values;
 	RETURN worth;
 END
 $$ LANGUAGE plpgsql;
@@ -114,7 +100,8 @@ DECLARE max_date date;
 BEGIN
 	SELECT min(date) INTO min_date FROM Strategies WHERE Strategies.userID = id;
 	SELECT max(date) INTO max_date FROM Strategies WHERE Strategies.userID = id;
-	RETURN QUERY select days.days::date, total_current_holdings(1,days.days::date) FROM generate_series(min_date,max_date,'1 day'::interval) days;
+	RETURN QUERY SELECT days.days::date, total_current_holdings(id,days.days::date) 
+		FROM generate_series(min_date,max_date,'1 day'::interval) days;
 END
 $$ LANGUAGE plpgsql;
 
@@ -146,7 +133,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION change_cash(id integer, curDate date, curAmount numeric(12,2) ) RETURNS void AS $$
 DECLARE maxTransaction integer;
 BEGIN
-	SELECT (max(transaction)+1) INTO maxTransaction FROM cash_on_hand WHERE userID = id AND date = curDate;
+	SELECT (max(transaction)+1) INTO maxTransaction FROM cash_on_hand 
+		WHERE userID = id AND date = curDate;
 	IF maxTransaction IS NULL THEN
 		maxTransaction := 1;
 	END IF;
@@ -171,7 +159,8 @@ BEGIN
 		FROM cash_on_hand 
 		WHERE userID = id AND 
 			date <= curDate;
-	SELECT cash INTO curCash FROM cash_on_hand where date = lookback_date AND userID = id;
+	SELECT cash INTO curCash FROM cash_on_hand 
+		WHERE date = lookback_date AND userID = id;
 	RETURN curCash;
 END
 $$ LANGUAGE plpgsql;
@@ -228,7 +217,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION add_new_user(id integer, usrName text, dob date, coh numeric(12,2)) RETURNS void AS $$
 BEGIN
 	INSERT INTO Investors(userid,name,date_of_birth) values(id,usrName,dob);
-	INSERT INTO Cash_On_Hand(date,userid,cash) values('1980-01-02',id,coh);	
+	INSERT INTO Cash_On_Hand(date,transaction,userid,cash) values('1980-01-02',1,id,coh);	
 END
 $$ LANGUAGE plpgsql;
 
@@ -263,11 +252,35 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
+-------------------------------------------------------------------------------
+-- NAME: current_price
+-- DESCRIPTION: Finds the current price of a particular stock at a particular date
+-- PARAMETERS:
+--  curTicker text - Ticker to examine price for
+--  curDate   date - Date to examine price for
+-------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION current_price(curTicker text, curDate date) RETURNS numeric(12,2) AS $$
 DECLARE price numeric(12,2);
 BEGIN
-	SELECT close INTO price FROM Market_Observations WHERE date = (SELECT max(date) from Market_Observations where date<= curDate AND ticker = curTicker) AND ticker = curTicker;
+	SELECT close INTO price FROM Market_Observations 
+		WHERE date = (SELECT max(date) FROM Market_Observations 
+			WHERE date<= curDate AND ticker = curTicker) AND ticker = curTicker;
 	RETURN price;
 	
+END
+$$ LANGUAGE plpgsql;
+
+-------------------------------------------------------------------------------
+-- NAME: free_stock
+-- DESCRITION: Inserts a stock into transactions, but doesn't account for cash-on-hand. Meant to be used for endowments.
+-- PARAMETERS:
+--  id        integer - UserID to add stock for
+--  curDate   date    - Date to buy the current sticker
+--  curTicker text    - Ticker to add transaction for
+--  curAmount numeric - How much of the stock to get
+-------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION free_stock(id integer, curDate date, curTicker text, curAmount numeric(12,3)) RETURNS void AS $$
+BEGIN
+	INSERT INTO Strategies(userid,date,ticker,count) values(id,curDate,curTicker,curAmount);
 END
 $$ LANGUAGE plpgsql;
