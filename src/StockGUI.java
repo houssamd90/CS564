@@ -66,6 +66,9 @@ public class StockGUI {
 	Connection con;
 	private JTextField txtUSERID;
 	
+	//last date with stock data from database
+	private final java.sql.Date FINAL_DATE = getSQLdate("2016-11-04");
+	
 	/**
 	 * Launch the application.
 	 */
@@ -162,6 +165,11 @@ public class StockGUI {
 				java.sql.Date date = getSQLdate(txtDate.getText());
 				String ticker = txtTicker.getText();
 				int quantity = Integer.parseInt(txtQuantity.getText());
+				
+				if(date.compareTo(FINAL_DATE)>0){
+					JOptionPane.showMessageDialog(null,"No stock data available past 2016-11-04, please use an earlier date");
+					return;
+				}
 				
 				//If a transaction for that user/day/ticker already exists in the
 				//database, delete it so we can add the current transaction
