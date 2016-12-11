@@ -57,7 +57,6 @@ public class StockGUI {
 	private JTextField txtCashOnHand;
 
 	//Postgres variables
-	private String sql = null;
 	private PreparedStatement st = null;
 	private JTextField txtUserIDnew;
 	private JTextField txtName;
@@ -845,6 +844,7 @@ public class StockGUI {
 	}
 	
 	//Checks if future transactions exist
+	private Boolean hasFutureTransactions(java.sql.Date date){
 		
 		Boolean hasFutureTransactions = false;
 		
