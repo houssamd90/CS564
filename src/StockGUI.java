@@ -166,8 +166,16 @@ public class StockGUI {
 				String ticker = txtTicker.getText();
 				int quantity = Integer.parseInt(txtQuantity.getText());
 				
+				//If trying to perform a transaction past the last date of available 
+				//stock data, throw an error
 				if(date.compareTo(FINAL_DATE)>0){
 					JOptionPane.showMessageDialog(null,"No stock data available past 2016-11-04, please use an earlier date");
+					return;
+				}
+				
+				//If trying to perform transactions out of order, throw an error
+				if(hasFutureTransactions(date)){
+					JOptionPane.showMessageDialog(null,"A future transaction exists. Cannot perform transactions out of order!");
 					return;
 				}
 				
@@ -740,6 +748,7 @@ public class StockGUI {
 		
 	}
 	
+	//Check if we have enough cash to perform transaction
 	private Boolean enoughCashForTransaction(int userID, java.sql.Date date, String ticker, Double quantity){
 		Double curCash = 0.00;
 		
@@ -833,6 +842,36 @@ public class StockGUI {
 		
 		return value;
 
+	}
+	
+	//Checks if future transactions exist
+		
+		Boolean hasFutureTransactions = false;
+		
+		@SuppressWarnings("deprecation")
+		String sql="select has_future_transactions(?)"; //date
+		
+		try {
+			st = con.prepareStatement(sql);
+			
+			st.setDate(1, date);
+			
+			if(st.execute()){
+				ResultSet result = st.getResultSet();
+				result.next();
+				hasFutureTransactions = result.getBoolean(1);
+			}
+		} catch (SQLException er) {
+			er.printStackTrace();
+		} finally{
+			if (st != null) { try {
+				st.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			} }
+		}
+		
+		return hasFutureTransactions;
 	}
 	
 	//Returns a java.sql.date given a date string in the format yyyy-MM-dd
