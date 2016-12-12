@@ -13,6 +13,9 @@ import javax.swing.JLabel;
 import javax.swing.JButton;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import java.awt.BorderLayout;
 
 import java.awt.Font;
 import java.math.BigDecimal;
@@ -29,6 +32,7 @@ import java.awt.event.ActionEvent;
 import java.text.DateFormat;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Vector;
 
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
@@ -622,7 +626,54 @@ public class StockGUI {
 		JButton btnDisplay = new JButton("Display");
 		btnDisplay.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				
+				// TABLE
+				final String sql="select * from all_transactions(?)";
+				try {
+					st = con.prepareStatement(sql);
+					int userID = Integer.parseInt(txtUserIDplot.getText());
+					st.setInt(1, userID);
+					
+					if (st.execute()) {
+						ResultSet rs = st.getResultSet();
+
+						Vector<String> columnNames = new Vector<String>();
+						columnNames.add("Date");
+						columnNames.add("Ticker");
+						columnNames.add("Number of shares");
+						
+						Vector<Vector<String>> rowData = new Vector<Vector<String>>();
+						while (rs.next()) {
+							Vector<String> row = new Vector<String>();
+							row.add(rs.getDate("xactDate").toString());
+							row.add(rs.getString("xactTicker"));
+							row.add(rs.getBigDecimal("xactCount").toString());
+							rowData.add(row);
+						}
+						JTable table = new JTable(rowData, columnNames);
+						JScrollPane scrollPane = new JScrollPane(table);
+						JFrame frame = new JFrame();
+					    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+						frame.add(scrollPane, BorderLayout.CENTER);
+					    frame.setSize(450, 200);
+					    frame.setTitle("Transactions for user " + txtUserIDplot.getText());
+					    frame.setVisible(true);
+					}
+				}
+				catch (Exception er) {
+                    er.printStackTrace();
+                    return;
+				}
+				finally {
+					if (st != null) {
+						try {
+							st.close();
+						}
+						catch (SQLException er) {
+							er.printStackTrace();
+							return;
+						}
+					}
+				}
 			}
 		});
 		btnDisplay.setBounds(1089, 185, 119, 61);
