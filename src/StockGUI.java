@@ -178,7 +178,7 @@ public class StockGUI {
 				}
 				
 				//If trying to perform transactions out of order, throw an error
-				if(hasFutureTransactions(date)){
+				if(hasFutureTransactions(userID, date)){
 					JOptionPane.showMessageDialog(null,"A future transaction exists. Cannot perform transactions out of order!");
 					return;
 				}
@@ -925,17 +925,18 @@ public class StockGUI {
 	}
 	
 	//Checks if future transactions exist
-	private Boolean hasFutureTransactions(java.sql.Date date){
+	private Boolean hasFutureTransactions(int userID, java.sql.Date date){
 		
 		Boolean hasFutureTransactions = false;
 		
 		@SuppressWarnings("deprecation")
-		String sql="select has_future_transactions(?)"; //date
+		String sql="select has_future_transactions(?,?)"; //userID, date
 		
 		try {
 			st = con.prepareStatement(sql);
 			
-			st.setDate(1, date);
+			st.setInt(1, userID);
+			st.setDate(2, date);
 			
 			if(st.execute()){
 				ResultSet result = st.getResultSet();

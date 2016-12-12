@@ -289,14 +289,15 @@ $$ LANGUAGE plpgsql;
 -- NAME: has_future_transactions
 -- DESCRIPTIONS: Checks whether a proposed stock transaction would occur out of order
 -- PARAMETERS:
---  date   date - The date of the proposed transaction
---  ticker text - The proposed ticker to look for
+--  id     integer - UserID to look for future transaction for
+--  date   date    - The date of the proposed transaction
 -------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION has_future_transactions(curDate date) RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION has_future_transactions(id integer, curDate date) RETURNS boolean AS $$
 DECLARE found boolean := FALSE;
 BEGIN
-	SELECT true INTO found FROM Market_Observations 
-		WHERE date >= curDate LIMIT 1;
+	SELECT true INTO found FROM Strategies 
+		WHERE date >= curDate AND userID = id LIMIT 1;
 	RETURN found;
 END
 $$ LANGUAGE plpgsql;
+
