@@ -67,6 +67,7 @@ public class StockGUI {
 	
 	//last date with stock data from database
 	private final java.sql.Date FINAL_DATE = getSQLdate("2016-11-04");
+	private JTextField txtUserIDplot;
 	
 	/**
 	 * Launch the application.
@@ -111,7 +112,7 @@ public class StockGUI {
 		
 		frmStockMartket = new JFrame();
 		frmStockMartket.setTitle("Stock Market");
-		frmStockMartket.setBounds(100, 100, 1053, 356);
+		frmStockMartket.setBounds(100, 100, 1291, 360);
 		frmStockMartket.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmStockMartket.getContentPane().setLayout(null);
 		
@@ -597,6 +598,35 @@ public class StockGUI {
 		txtUSERID.setColumns(10);
 		txtUSERID.setBounds(104, 82, 86, 20);
 		frmStockMartket.getContentPane().add(txtUSERID);
+		
+		JSeparator separator_3 = new JSeparator();
+		separator_3.setOrientation(SwingConstants.VERTICAL);
+		separator_3.setBounds(1028, 11, 2, 280);
+		frmStockMartket.getContentPane().add(separator_3);
+		
+		JLabel lblTransactions = new JLabel("Transactions");
+		lblTransactions.setFont(new Font("Tahoma", Font.BOLD, 16));
+		lblTransactions.setBounds(1089, 26, 152, 20);
+		frmStockMartket.getContentPane().add(lblTransactions);
+		
+		JLabel label_2 = new JLabel("User ID");
+		label_2.setBounds(1040, 123, 141, 14);
+		frmStockMartket.getContentPane().add(label_2);
+		
+		txtUserIDplot = new JTextField();
+		txtUserIDplot.setColumns(10);
+		txtUserIDplot.setBounds(1163, 120, 86, 20);
+		frmStockMartket.getContentPane().add(txtUserIDplot);
+		
+		//Display a table of the user's transactions. txtUserIDplot stores the userID input
+		JButton btnDisplay = new JButton("Display");
+		btnDisplay.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				
+			}
+		});
+		btnDisplay.setBounds(1089, 185, 119, 61);
+		frmStockMartket.getContentPane().add(btnDisplay);
 		
 	}
 	
